@@ -272,6 +272,35 @@
                                VerticalAlignment="Bottom" HorizontalAlignment="Center"
                                Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
                 </Grid>
+
+                <!-- 歌词：当前行 / 翻译 / 下一行 -->
+                <StackPanel x:Name="LyricsArea"
+                            Margin="0,12,0,0"
+                            Visibility="Collapsed">
+                    <TextBlock x:Name="LyricCurrent"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource Theme.Foreground}"
+                               TextAlignment="Center"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="LyricTranslation"
+                               FontSize="12"
+                               Margin="0,2,0,0"
+                               Foreground="{DynamicResource Theme.Muted}"
+                               TextAlignment="Center"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="Collapsed" />
+                    <TextBlock x:Name="LyricNext"
+                               FontSize="12"
+                               Margin="0,3,0,0"
+                               Foreground="{DynamicResource Theme.Muted}"
+                               TextAlignment="Center"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               Opacity="0.75" />
+                </StackPanel>
             </StackPanel>
         </Grid>
     </Border>
