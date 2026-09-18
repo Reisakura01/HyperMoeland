@@ -16,10 +16,12 @@ public partial class CompactPill : UserControl
 {
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+    private readonly DispatcherTimer _volumeTimer = new() { Interval = TimeSpan.FromMilliseconds(1600) };
     private string? _mediaText;
     private string? _notificationText;
     private ImageSource? _cover;
     private bool _charging;
+    private bool _volumeActive;   // 正在显示音量指示（临时替代其它内容）
 
     public CompactPill()
     {
@@ -27,6 +29,22 @@ public partial class CompactPill : UserControl
         _clock.Tick += (_, _) => Update();
         _clock.Start();
         _notificationTimer.Tick += (_, _) => { _notificationText = null; Update(); };
+        _volumeTimer.Tick += (_, _) => { _volumeActive = false; _volumeTimer.Stop(); Update(); };
+        Update();
+    }
+
+    /// <summary>
+    /// 显示音量指示（调节音量时调用）：胶囊暂时变为「喇叭图标 + 音量条」，
+    /// 1.6 秒无新变化后自动复原为时钟/媒体/通知内容。
+    /// </summary>
+    public void ShowVolume(double level, bool muted)
+    {
+        double clamped = Math.Clamp(level, 0, 1);
+        VolumeFill.Width = clamped * 118;          // 轨道宽 118
+        VolumeIcon.Opacity = muted ? 0.35 : 1.0;   // 静音时图标变淡
+        _volumeActive = true;
+        _volumeTimer.Stop();
+        _volumeTimer.Start();
         Update();
     }
 
@@ -94,6 +112,21 @@ public partial class CompactPill : UserControl
 
     private void Update()
     {
+        // 音量指示优先级最高（正在调音量时临时占用胶囊）
+        if (_volumeActive)
+        {
+            CoverBorder.Visibility = Visibility.Collapsed;
+            CoverImage.Source = null;
+            ChargingIcon.Visibility = Visibility.Collapsed;
+            ActivityIcon.Visibility = Visibility.Collapsed;
+            TitleText.Visibility = Visibility.Collapsed;
+            VolumeView.Visibility = Visibility.Visible;
+            return;
+        }
+
+        VolumeView.Visibility = Visibility.Collapsed;
+        TitleText.Visibility = Visibility.Visible;
+
         // 优先级：通知 > 媒体 > 时钟
         if (_notificationText is not null)
         {

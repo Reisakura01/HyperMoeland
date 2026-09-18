@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     private readonly float[] _audioBands = new float[6];
     private bool _audioStarted;
     private readonly LyricsService _lyrics = new();
+    private readonly VolumeService _volume = new();
+    private int _volumePollTick;
     private bool _mediaPlaying;
     private TrayIcon? _tray;
     private GlobalMouseHook? _mouseHook;
@@ -113,6 +115,7 @@ public partial class MainWindow : Window
         _audioTimer.Tick += (_, _) => UpdateAudio();
         _audioTimer.Start();
         _lyrics.Changed += () => Dispatcher.InvokeAsync(PushLyrics);   // 歌词（抓取完成/换行）→ 刷新卡片
+        _volume.VolumeChanged += (level, muted) => Pill.ShowVolume(level, muted);   // 音量变化 → 胶囊显示音量条
         _notificationTimer.Tick += async (_, _) => await _notifications.PollAsync();
         // 注意：轮询定时器不在这里启动——等通知服务初始化后，
         // 仅在「无包身份 → 轮询回退」模式下才启动（有身份时用事件订阅，无需轮询）。
@@ -133,6 +136,13 @@ public partial class MainWindow : Window
         }
         int n = _audio.CopyBands(_audioBands);
         Card.SetAudioLevel(n > 0 ? _audio.Level : 0f, _audioBands, _audio.IsActive);
+
+        // 音量指示：约每 120ms 轮询一次（40ms × 3）
+        if (++_volumePollTick >= 3)
+        {
+            _volumePollTick = 0;
+            _volume.Poll();
+        }
     }
 
     private async System.Threading.Tasks.Task InitializeWinRtServicesAsync()
@@ -193,6 +203,7 @@ public partial class MainWindow : Window
         _foreground.Stop();
         _audio.Dispose();
         _lyrics.Dispose();
+        _volume.Dispose();
     }
 
     // ---- 拖拽与点击 ----

@@ -53,6 +53,30 @@
                        Margin="8,0,0,0"
                        TextTrimming="CharacterEllipsis"
                        MaxWidth="138" />
+
+            <!-- 音量指示：调节音量时临时替代内容显示（1.6 秒后复原） -->
+            <StackPanel x:Name="VolumeView"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <Path x:Name="VolumeIcon"
+                      Data="M3,7 H6 L10,3 V15 L6,11 H3 Z"
+                      Fill="{DynamicResource Theme.Foreground}"
+                      Width="14" Height="14"
+                      Stretch="Uniform"
+                      VerticalAlignment="Center" />
+                <Border Width="118" Height="6"
+                        CornerRadius="3"
+                        Margin="9,0,0,0"
+                        Background="{DynamicResource Theme.Border}"
+                        VerticalAlignment="Center">
+                    <Rectangle x:Name="VolumeFill"
+                               Fill="{DynamicResource Theme.Foreground}"
+                               RadiusX="3" RadiusY="3"
+                               HorizontalAlignment="Left"
+                               Width="0" />
+                </Border>
+            </StackPanel>
         </StackPanel>
     </Border>
 </UserControl>
