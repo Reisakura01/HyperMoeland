@@ -49,15 +49,39 @@
 - **.NET 10** / **WPF**（无 WinUI）
 - **Windows SDK 10.0.26100**（TFM `net10.0-windows10.0.26100.0`）
 - **WinRT：SMTC**（媒体会话）、**UserNotificationListener**（通知）、**Battery**（电量）
-- **Win32/DWM P/Invoke**（窗口样式、不抢焦点、显示器、前台窗口）
+- **WASAPI 环回采集 + 手写 1024 点 FFT**（音频频谱，纯 COM 互操作，无第三方库）
+- **Win32/DWM P/Invoke**（窗口样式、不抢焦点、显示器、前台窗口、系统音量、CPU/内存）
+- **Inno Setup 6**（安装包）+ **MSIX 稀疏包身份**（可选，启用官方通知事件订阅）
 
 ---
 
 ## 🚀 构建与运行
 
+### 方式一：下载安装包（推荐给普通用户）
+
+到 [Releases](https://github.com/Reisakura01/HyperMoeland/releases) 下载
+`HyperMoeland-1.3.0-setup.exe`，双击安装即可：
+
+- 装到 `%LOCALAPPDATA%\Programs\HyperMoeland`，**每位用户安装，不需要管理员权限**
+- 安装界面支持**简体中文 / English**
+- 安装前会检查 .NET 10 桌面运行时（缺失时给出下载地址）
+- 卸载走「设置 → 应用」，会一并清理快捷方式与安装目录
+
+### 方式二：从源码编译
+
 1. 安装 **VS2026 Community**（或 VS2022+），勾选 **.NET 10 SDK** 与 **Windows SDK 10.0.26100**；
 2. 用 VS 打开 `HyperMoeland.sln`；
 3. **Ctrl+Shift+B** 编译，或直接 **F5** 运行。
+
+命令行发布 / 打包安装程序：
+
+```powershell
+# 发布（框架依赖）
+dotnet publish HyperMoeland/HyperMoeland.csproj -c Release -o dist
+
+# 打 Inno Setup 安装包（需先装 Inno Setup 6）
+pwsh -File packaging/installer/Build-Installer.ps1
+```
 
 运行后：顶部中央出现胶囊（显示时间），点击展开成卡片，再点收回；
 播放音乐时胶囊显示封面+曲名；到 19:00 自动切深色，早 6:00 切回浅色。
@@ -73,6 +97,9 @@ HyperMoeland/
 ├── README.md
 ├── 项目目录.md
 ├── .gitignore
+├── packaging/
+│   ├── identity/                    # 稀疏包身份（MSIX）：证书/打包/注册/移除脚本
+│   └── installer/                   # Inno Setup 安装包：脚本 + 中文词条 + 一键构建
 └── HyperMoeland/
     ├── HyperMoeland.csproj   # net10.0-windows10.0.26100.0 + UseWPF + UseWindowsForms
     ├── App.xaml(.cs)                # 入口 + 主题画刷默认值
@@ -81,24 +108,36 @@ HyperMoeland/
     │   ├── IslandState.cs           # 状态枚举 + 胶囊/卡片尺寸常量
     │   └── IslandController.cs      # 紧凑/展开状态机
     ├── Models/
-    │   └── MediaSessionInfo.cs      # 媒体会话快照（曲名/歌手/封面/播放状态）
+    │   ├── MediaSessionInfo.cs      # 媒体会话快照（曲名/歌手/封面/播放状态）
+    │   ├── LyricsLine.cs            # 单行歌词（时间 + 原文 + 译文）
+    │   └── AppSettings.cs           # 设置（主题/自启/语言/霓虹节拍/小组件开关）
     ├── Theme/
     │   ├── AppTheme.cs              # Day / Night 枚举
     │   ├── ThemeManager.cs          # 画刷资源动态切换（深浅胶囊）
     │   └── ThemeScheduler.cs        # 按小时自动切换日夜
     ├── Interop/
-    │   ├── NativeMethods.cs         # Win32/DWM P/Invoke（窗口样式、显示器、前台窗口）
+    │   ├── NativeMethods.cs         # Win32/DWM P/Invoke（窗口样式、显示器、前台窗口、包身份）
     │   ├── MicaController.cs        # 应用窗口样式 + 暗色模式 + 不抢焦点
-    │   └── MonitorHelper.cs         # 主屏 / 指定屏工作区
+    │   ├── MonitorHelper.cs         # 主屏 / 指定屏工作区
+    │   ├── WasapiLoopbackCapture.cs # WASAPI 环回采集（系统正在播放的声音）
+    │   ├── SystemVolume.cs          # IAudioEndpointVolume（读/写系统主音量）
+    │   └── SystemInfo.cs            # GetSystemTimes + GlobalMemoryStatusEx
     ├── Services/
     │   ├── MediaService.cs          # SMTC 媒体会话（信息/控制/进度，含时间平滑外推）
-    │   ├── NotificationService.cs   # 系统通知监听 + 读取 Toast 正文
+    │   ├── NotificationService.cs   # 系统通知监听（事件订阅 / 轮询双模）+ 读取 Toast 正文
+    │   ├── AudioService.cs          # 1024 点 FFT → 6 频段频谱 + 音量包络
+    │   ├── LyricsService.cs         # 歌词调度：SMTC 进度对齐 / 本地时钟兜底 + 缓存
+    │   ├── Lyrics/                  # LRC 解析 + 多源提供者（网易云 / LRCLIB）
+    │   ├── VolumeService.cs         # 音量变化轮询 → 胶囊音量条
+    │   ├── SystemMonitorService.cs  # CPU / 内存采样（小组件数据源）
     │   ├── BatteryService.cs        # 电量百分比
     │   ├── ForegroundWatcher.cs     # 全屏检测 + 多显示器跟随
-    │   └── TrayIcon.cs              # 系统托盘（开机自启开关 + 退出）
+    │   └── TrayIcon.cs              # 系统托盘（设置/开机自启/测试通知/退出）
     └── Views/
-        ├── CompactPill.xaml(.cs)    # 紧凑胶囊（时钟/媒体封面/通知）
-        └── ExpandedCard.xaml(.cs)   # 展开卡片（时钟卡 / 媒体大面板）
+        ├── CompactPill.xaml(.cs)    # 紧凑胶囊（时钟/媒体封面/通知/音量条）
+        ├── ExpandedCard.xaml(.cs)   # 展开卡片（时钟卡+小组件 / 媒体大面板+频谱+歌词）
+        ├── SystemWidgets.xaml(.cs)  # CPU / 内存环形小组件
+        └── SettingsWindow.xaml(.cs) # 设置窗口
 ```
 
 ---
@@ -132,7 +171,7 @@ private readonly ThemeScheduler _themeScheduler = new()
 
 ## 📄 许可
 
-本项目采用 **MIT License**（如需正式托管可补充 LICENSE 文件）。
+本项目采用 **MIT License**，详见 [LICENSE](LICENSE)。
 
 ---
 

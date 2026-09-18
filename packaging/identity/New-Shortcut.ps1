@@ -35,15 +35,21 @@ $shortcutPath = switch ($Destination) {
     default     { $Destination }
 }
 
-$iconPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path 'HyperMoeland\App.ico'
+$iconPath = @(
+    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'HyperMoeland\App.ico'),  # 仓库布局
+    (Join-Path $PSScriptRoot 'App.ico'),                                                        # 安装目录布局
+    (Join-Path (Split-Path $PSScriptRoot -Parent) 'App.ico')
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = 'explorer.exe'
 $shortcut.Arguments = "shell:AppsFolder\$aumid"
-$shortcut.WorkingDirectory = (Split-Path $iconPath)
-if (Test-Path $iconPath) { $shortcut.IconLocation = $iconPath }
 $shortcut.Description = 'HyperMoeland（带包身份启动）'
+if ($iconPath) {
+    $shortcut.WorkingDirectory = (Split-Path $iconPath)
+    $shortcut.IconLocation = $iconPath
+}
 $shortcut.Save()
 
 Write-Host "已创建快捷方式：$shortcutPath" -ForegroundColor Green

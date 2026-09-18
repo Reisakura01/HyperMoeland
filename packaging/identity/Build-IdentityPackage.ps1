@@ -40,7 +40,14 @@ $identity = switch ($Channel) {
     'dev'    { @{ Name = 'MoeOrigin.HyperMoeland.Dev'; DisplayName = 'HyperMoeland Development' } }
 }
 
+# 兼容两种布局：仓库内（<repo>\packaging\identity）与安装目录内（<app>\identity）
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$iconPath = @(
+    (Join-Path $repositoryRoot 'HyperMoeland\App.ico'),   # 仓库布局
+    (Join-Path $PSScriptRoot 'App.ico')                   # 安装目录布局（随安装包附带）
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $iconPath) { throw '找不到应用图标 App.ico（仓库：HyperMoeland\App.ico；安装目录：identity\App.ico）' }
+
 $stagingDirectory = Join-Path $OutputDirectory 'identity-staging'
 $assetsDirectory = Join-Path $stagingDirectory 'assets'
 $manifestPath = Join-Path $stagingDirectory 'AppxManifest.xml'
@@ -53,8 +60,6 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
 # ---- 从 App.ico 生成清单所需的方形图标 ----
 Add-Type -AssemblyName System.Drawing
-$iconPath = Join-Path $repositoryRoot 'HyperMoeland\App.ico'
-if (-not (Test-Path $iconPath)) { throw "找不到应用图标：$iconPath" }
 
 function Export-IconPng([string]$icoPath, [int]$size, [string]$destination) {
     $icon = New-Object System.Drawing.Icon($icoPath, $size, $size)

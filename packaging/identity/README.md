@@ -36,12 +36,20 @@ dotnet publish HyperMoeland\HyperMoeland.csproj -c Release -r win-x64 --self-con
 ### 2. 注册包身份（首次，需管理员）
 
 ```powershell
-# 默认指向仓库下的 dist 目录，版本 1.2.0.0
+# 在仓库里：默认指向仓库下的 dist 目录
 .\packaging\identity\Install-Identity.ps1
 
 # 或指定目录 / 版本 / 渠道（dev 与 stable 可共存）
 .\packaging\identity\Install-Identity.ps1 -ExternalLocation "D:\apps\HyperMoeland" -Version 1.3.0.0 -Channel dev
 ```
+
+> **用安装包装的版本**：脚本会随安装包复制到 `%LOCALAPPDATA%\Programs\HyperMoeland\identity\`，
+> 此时不带参数即可——脚本会自动识别「安装目录布局」（应用目录 = 安装目录，
+> 工作目录 = `identity\build\`）：
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\HyperMoeland\identity\Install-Identity.ps1" -Version 1.3.0.0
+> ```
 
 脚本会依次：
 1. 生成/复用自签名证书（`CN=MoeOrigin Team`）

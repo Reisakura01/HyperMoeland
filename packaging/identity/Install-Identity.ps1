@@ -56,20 +56,34 @@ if (-not (Test-IsElevated)) {
     return
 }
 
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$scriptDirectory = $PSScriptRoot
+
+# 兼容两种布局：
+#   仓库内   ：<repo>\packaging\identity\  → 应用在 <repo>\dist，工作目录 <repo>\dist\identity
+#   安装目录内：<app>\identity\            → 应用在 <app>，     工作目录 <app>\identity\build
+$repositoryRoot = $null
+try { $repositoryRoot = (Resolve-Path (Join-Path $scriptDirectory '..\..') -ErrorAction Stop).Path } catch { }
+$isRepositoryLayout = $repositoryRoot -and (Test-Path (Join-Path $repositoryRoot 'HyperMoeland\HyperMoeland.csproj'))
+
+if ($isRepositoryLayout) {
+    $workDirectory = Join-Path $repositoryRoot 'dist\identity'
+    $applicationDirectory = Join-Path $repositoryRoot 'dist'
+} else {
+    $workDirectory = Join-Path $scriptDirectory 'build'
+    $applicationDirectory = (Resolve-Path (Join-Path $scriptDirectory '..')).Path
+}
 
 if ([string]::IsNullOrWhiteSpace($ExternalLocation)) {
-    $ExternalLocation = Join-Path $repositoryRoot 'dist'
+    $ExternalLocation = $applicationDirectory
 }
 $ExternalLocation = (Resolve-Path $ExternalLocation).Path
 
 $exePath = Join-Path $ExternalLocation 'HyperMoeland.exe'
 if (-not (Test-Path $exePath)) {
-    throw "在 $ExternalLocation 中找不到 HyperMoeland.exe，请先执行构建/发布。"
+    throw "在 $ExternalLocation 中找不到 HyperMoeland.exe，请先执行构建/发布，或用 -ExternalLocation 指定目录。"
 }
 
 $packageName = if ($Channel -eq 'dev') { 'MoeOrigin.HyperMoeland.Dev' } else { 'MoeOrigin.HyperMoeland' }
-$workDirectory = Join-Path $repositoryRoot 'dist\identity'
 $certificateDirectory = Join-Path $workDirectory 'cert'
 
 Write-Host "== HyperMoeland 身份注册 ==" -ForegroundColor Cyan
