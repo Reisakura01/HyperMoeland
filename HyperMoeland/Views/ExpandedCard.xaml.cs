@@ -7,6 +7,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using HyperMoeland.Core;
 using HyperMoeland.Services;
 
 namespace HyperMoeland.Views;
@@ -318,6 +319,14 @@ public partial class ExpandedCard : UserControl
         => BatteryText.Text = percent is double p
             ? LocalizationService.T("Card.Battery", $"{p:0}")
             : LocalizationService.T("Card.BatteryUnknown");
+
+    /// <summary>刷新 CPU / 内存小组件（<0 表示尚未就绪）。</summary>
+    public void SetWidgets(double cpu, double mem, double usedGb, double totalGb)
+        => Widgets.Set(cpu, mem, usedGb, totalGb);
+
+    /// <summary>是否显示系统小组件（设置项控制）。</summary>
+    public void SetWidgetsVisible(bool visible)
+        => Widgets.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
     private bool _charging;
 

@@ -13,5 +13,7 @@
              否则 DynamicResource 在 ThemeManager.Apply 未触发时找不到该 key，
              Path.Fill 为空导致闪电不渲染（只占位不显示）。 -->
         <SolidColorBrush x:Key="Theme.Charging"  Color="#FF00C27A" />
+        <!-- 强调色：小组件圆环等点缀元素（默认日间色） -->
+        <SolidColorBrush x:Key="Theme.Accent"    Color="#FF0A6CD6" />
     </Application.Resources>
 </Application>

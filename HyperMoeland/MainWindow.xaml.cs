@@ -42,6 +42,8 @@ public partial class MainWindow : Window
     private bool _audioStarted;
     private readonly LyricsService _lyrics = new();
     private readonly VolumeService _volume = new();
+    private readonly SystemMonitorService _systemMonitor = new();
+    private readonly DispatcherTimer _widgetTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private int _volumePollTick;
     private bool _mediaPlaying;
     private TrayIcon? _tray;
@@ -116,6 +118,10 @@ public partial class MainWindow : Window
         _audioTimer.Start();
         _lyrics.Changed += () => Dispatcher.InvokeAsync(PushLyrics);   // 歌词（抓取完成/换行）→ 刷新卡片
         _volume.VolumeChanged += (level, muted) => Pill.ShowVolume(level, muted);   // 音量变化 → 胶囊显示音量条
+        // 系统小组件：每秒采样一次 CPU / 内存（展开卡片显示）
+        _systemMonitor.Changed += (cpu, mem) => Card.SetWidgets(cpu, mem, _systemMonitor.MemoryUsedGb, _systemMonitor.MemoryTotalGb);
+        _widgetTimer.Tick += (_, _) => _systemMonitor.Poll();
+        ApplyWidgetSettings();
         _notificationTimer.Tick += async (_, _) => await _notifications.PollAsync();
         // 注意：轮询定时器不在这里启动——等通知服务初始化后，
         // 仅在「无包身份 → 轮询回退」模式下才启动（有身份时用事件订阅，无需轮询）。
@@ -173,6 +179,25 @@ public partial class MainWindow : Window
         _themeScheduler.ApplyNow();
     }
 
+    /// <summary>应用系统小组件设置：显示时启动每秒采样（先采一次建立 CPU 基准）。</summary>
+    private void ApplyWidgetSettings()
+    {
+        bool show = SettingsService.Current.ShowSystemWidgets;
+        Card.SetWidgetsVisible(show);
+        if (show)
+        {
+            if (!_widgetTimer.IsEnabled)
+            {
+                _systemMonitor.Poll();
+                _widgetTimer.Start();
+            }
+        }
+        else
+        {
+            _widgetTimer.Stop();
+        }
+    }
+
     /// <summary>打开设置窗口；保存后重新应用设置。</summary>
     private void OpenSettingsWindow()
     {
@@ -180,6 +205,7 @@ public partial class MainWindow : Window
         if (win.ShowDialog() == true)
         {
             ApplyThemeSettings();
+            ApplyWidgetSettings();
             AutoStart.Set(SettingsService.Current.AutoStart);
         }
     }

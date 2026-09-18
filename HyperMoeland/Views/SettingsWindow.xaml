@@ -278,6 +278,7 @@
                         </StackPanel>
                         <CheckBox x:Name="AutoStartCheck" Content="开机自启" Style="{StaticResource ModernCheck}"/>
                         <CheckBox x:Name="AutoUpdateCheck" Content="启动时检查更新" Style="{StaticResource ModernCheck}"/>
+                        <CheckBox x:Name="WidgetsCheck" Content="显示 CPU / 内存小组件" Style="{StaticResource ModernCheck}"/>
                         <TextBlock x:Name="LanguageLabel" Text="语言" Style="{StaticResource FieldLabel}"/>
                         <ComboBox x:Name="LanguageBox" Style="{StaticResource RoundCombo}">
                             <ComboBoxItem x:Name="LangChineseItem" Content="中文"/>

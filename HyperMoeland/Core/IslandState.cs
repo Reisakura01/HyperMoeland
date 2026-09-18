@@ -13,7 +13,7 @@ public static class IslandMetrics
     public const double CompactWidth = 232;
     public const double CompactHeight = 46;
     public const double ExpandedWidth = 250;        // 时钟卡
-    public const double ExpandedHeight = 150;
+    public const double ExpandedHeight = 200;       // 含 CPU / 内存小组件
     public const double MediaExpandedWidth = 460;   // 媒体大面板（小米超级岛）
     public const double MediaExpandedHeight = 320;  // 含音频频谱 + 歌词区
 }

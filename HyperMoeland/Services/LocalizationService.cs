@@ -50,6 +50,14 @@ internal static class LocalizationService
         ["Card.Next"]             = ("下一首", "Next"),
         ["Card.Battery"]          = ("电量 {0}%", "Battery {0}%"),
         ["Card.BatteryUnknown"]   = ("电量 --", "Battery --"),
+        ["Card.LyricsWaiting"]    = ("歌词加载中…", "Loading lyrics…"),
+
+        // ---- 系统小组件 ----
+        ["Widget.Cpu"]            = ("CPU", "CPU"),
+        ["Widget.Memory"]         = ("内存", "Memory"),
+        ["Widget.CpuTip"]         = ("CPU 占用 {0:F0}%", "CPU usage {0:F0}%"),
+        ["Widget.MemoryTip"]      = ("已用 {0:F1} / {1:F1} GB", "{0:F1} / {1:F1} GB used"),
+        ["Settings.Widgets"]      = ("显示 CPU / 内存小组件", "Show CPU / memory widgets"),
 
         // ---- 通知 ----
         ["Notif.UnknownApp"]      = ("通知", "Notification"),

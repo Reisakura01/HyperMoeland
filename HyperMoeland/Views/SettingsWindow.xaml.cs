@@ -45,6 +45,7 @@ public partial class SettingsWindow : Window
 
         AutoStartCheck.IsChecked = s.AutoStart;
         AutoUpdateCheck.IsChecked = s.AutoUpdate;
+        WidgetsCheck.IsChecked = s.ShowSystemWidgets;
         NeonSpeedSlider.Value = Math.Clamp(s.NeonSpeedMs, 400, 2000);
         NeonSpeedLabel.Text = s.NeonSpeedMs + "ms";
 
@@ -66,6 +67,7 @@ public partial class SettingsWindow : Window
         SystemTitleText.Text = LocalizationService.T("Settings.System");
         AutoStartCheck.Content = LocalizationService.T("Settings.AutoStart");
         AutoUpdateCheck.Content = LocalizationService.T("Settings.AutoUpdate");
+        WidgetsCheck.Content = LocalizationService.T("Settings.Widgets");
         LanguageLabel.Text = LocalizationService.T("Settings.Language");
         NeonTitleText.Text = LocalizationService.T("Settings.Neon");
         NeonHintText.Text = LocalizationService.T("Settings.NeonHint");
@@ -89,6 +91,7 @@ public partial class SettingsWindow : Window
         s.NightStartHour = Math.Clamp(NightStartBox.SelectedIndex, 0, 23);
         s.AutoStart = AutoStartCheck.IsChecked == true;
         s.AutoUpdate = AutoUpdateCheck.IsChecked == true;
+        s.ShowSystemWidgets = WidgetsCheck.IsChecked == true;
         s.NeonSpeedMs = (int)NeonSpeedSlider.Value;
         s.Language = LanguageBox.SelectedIndex == 1 ? AppLanguage.English : AppLanguage.Chinese;
 

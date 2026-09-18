@@ -25,4 +25,7 @@ public class AppSettings
 
     /// <summary>界面语言，默认中文。</summary>
     public AppLanguage Language { get; set; } = AppLanguage.Chinese;
+
+    /// <summary>在展开卡片上显示 CPU / 内存小组件。</summary>
+    public bool ShowSystemWidgets { get; set; } = true;
 }
