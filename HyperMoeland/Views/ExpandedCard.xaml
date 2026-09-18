@@ -240,6 +240,38 @@
                                VerticalAlignment="Center"
                                Grid.Column="2" />
                 </Grid>
+
+                <!-- 音频频谱：6 个频段，随系统实际播放的声音律动 -->
+                <Grid x:Name="SpectrumRow"
+                      Margin="0,12,0,0"
+                      Height="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Rectangle x:Name="SpecBar0" Grid.Column="0" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                    <Rectangle x:Name="SpecBar1" Grid.Column="1" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                    <Rectangle x:Name="SpecBar2" Grid.Column="2" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                    <Rectangle x:Name="SpecBar3" Grid.Column="3" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                    <Rectangle x:Name="SpecBar4" Grid.Column="4" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                    <Rectangle x:Name="SpecBar5" Grid.Column="5" Width="4" Height="2" RadiusX="2" RadiusY="2"
+                               VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                               Fill="{DynamicResource Theme.Foreground}" Opacity="0.55" />
+                </Grid>
             </StackPanel>
         </Grid>
     </Border>

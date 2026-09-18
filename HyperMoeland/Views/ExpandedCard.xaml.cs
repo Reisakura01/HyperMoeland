@@ -27,15 +27,18 @@ public partial class ExpandedCard : UserControl
     private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private readonly DispatcherTimer _neonTimer = new() { Interval = TimeSpan.FromMilliseconds(900) }; // 约66BPM舒缓呼吸
     private readonly UIElement[] _neonLayers; // 每个元素为一种固定配色（已缓存为静态位图）
+    private readonly Rectangle[] _specBars;   // 频谱条（6 频段）
     private int _neonIdx;
     private double? _progressRatio;
     private double _currentDuration;
     private bool _liked;
+    private bool _audioDriven;                // 霓虹亮度是否正被音频驱动
 
     public ExpandedCard()
     {
         InitializeComponent();
         _neonLayers = new UIElement[] { NeonLayer0, NeonLayer1, NeonLayer2 };
+        _specBars = new[] { SpecBar0, SpecBar1, SpecBar2, SpecBar3, SpecBar4, SpecBar5 };
         AssignNeonBitmaps();
         _clock.Tick += (_, _) => UpdateClock();
         _clock.Start();
@@ -125,7 +128,8 @@ public partial class ExpandedCard : UserControl
 
     private static byte ClampB(double v) => (byte)Math.Clamp(v, 0, 255);
 
-    /// <summary>播放音乐时开启斜切霓虹渐变背景脉动；停止/无媒体时关闭并淡出。</summary>
+    /// <summary>播放音乐时开启斜切霓虹渐变背景脉动；停止/无媒体时关闭并淡出。
+    /// 若有真实音频数据，亮度改由音频驱动（见 <see cref="SetAudioLevel"/>）。</summary>
     public void SetNeon(bool on)
     {
         if (on)
@@ -134,21 +138,63 @@ public partial class ExpandedCard : UserControl
             var dur = TimeSpan.FromMilliseconds(Math.Clamp(SettingsService.Current.NeonSpeedMs, 400, 2000));
             _neonTimer.Interval = dur;
             if (!_neonTimer.IsEnabled) _neonTimer.Start();
-            // 连续平滑呼吸（正弦缓动；幅度稍放大到 0.32↔0.42，在浅色卡片上也能清晰看到下半部发光）
-            NeonBack.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(0.32, 0.42, dur)
-                {
-                    AutoReverse = true,
-                    EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                    RepeatBehavior = RepeatBehavior.Forever,
-                });
+            if (!_audioDriven) StartNeonBreath(dur);
         }
         else
         {
             _neonTimer.Stop();
+            _audioDriven = false;
             var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(250));
             fade.Completed += (_, _) => NeonBack.Visibility = Visibility.Collapsed;
             NeonBack.BeginAnimation(UIElement.OpacityProperty, fade);
+        }
+    }
+
+    /// <summary>连续平滑呼吸（正弦缓动；无音频数据时的兜底动效）。</summary>
+    private void StartNeonBreath(TimeSpan dur)
+        => NeonBack.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0.32, 0.42, dur)
+            {
+                AutoReverse = true,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+                RepeatBehavior = RepeatBehavior.Forever,
+            });
+
+    /// <summary>
+    /// 用真实音频电平驱动视觉（约 25fps，由 MainWindow 推送）：
+    ///   • 霓虹背景亮度随总体音量起伏（静音时回落并恢复呼吸动效）
+    ///   • 6 个频谱条高度随各频段强度变化
+    /// </summary>
+    public void SetAudioLevel(float level, float[] bands, bool active)
+    {
+        // 频谱条（即使无音频也让它们收到最低高度，保持视觉稳定）
+        for (int i = 0; i < _specBars.Length; i++)
+        {
+            float v = i < bands.Length ? bands[i] : 0f;
+            if (v < 0f) v = 0f;
+            if (v > 1f) v = 1f;
+            _specBars[i].Height = 2 + v * 16;   // 2 ~ 18px
+        }
+
+        if (NeonBack.Visibility != Visibility.Visible) return;
+
+        if (active)
+        {
+            // 音频驱动：停止呼吸动画，直接按音量设置亮度
+            if (!_audioDriven)
+            {
+                _audioDriven = true;
+                NeonBack.BeginAnimation(UIElement.OpacityProperty, null);
+            }
+            float lv = Math.Clamp(level, 0f, 1f);
+            NeonBack.Opacity = 0.30 + lv * 0.45;   // 0.30 ~ 0.75
+        }
+        else if (_audioDriven)
+        {
+            // 声音停止：恢复呼吸动效
+            _audioDriven = false;
+            StartNeonBreath(TimeSpan.FromMilliseconds(
+                Math.Clamp(SettingsService.Current.NeonSpeedMs, 400, 2000)));
         }
     }
 

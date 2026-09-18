@@ -36,6 +36,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _audioTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
+    private readonly AudioService _audio = new();
+    private readonly float[] _audioBands = new float[6];
+    private bool _audioStarted;
     private TrayIcon? _tray;
     private GlobalMouseHook? _mouseHook;
     private bool _fullscreen;
@@ -104,6 +108,8 @@ public partial class MainWindow : Window
         _mouseHook = new GlobalMouseHook();
         _mouseHook.LeftButtonDown += OnGlobalLeftDown;
         _progressTimer.Start();
+        _audioTimer.Tick += (_, _) => UpdateAudio();
+        _audioTimer.Start();
         _notificationTimer.Tick += async (_, _) => await _notifications.PollAsync();
         // 注意：轮询定时器不在这里启动——等通知服务初始化后，
         // 仅在「无包身份 → 轮询回退」模式下才启动（有身份时用事件订阅，无需轮询）。
@@ -112,6 +118,18 @@ public partial class MainWindow : Window
             _ = CheckForUpdatesAsync();   // 启动后检查 GitHub 是否有新版本
 
         _ = InitializeWinRtServicesAsync();
+    }
+
+    /// <summary>把音频频谱推给卡片（约 25fps）：驱动霓虹亮度 + 频谱条。</summary>
+    private void UpdateAudio()
+    {
+        if (!_audio.IsCapturing && !_audioStarted)
+        {
+            _audio.Start();
+            _audioStarted = true;
+        }
+        int n = _audio.CopyBands(_audioBands);
+        Card.SetAudioLevel(n > 0 ? _audio.Level : 0f, _audioBands, _audio.IsActive);
     }
 
     private async System.Threading.Tasks.Task InitializeWinRtServicesAsync()
@@ -170,6 +188,7 @@ public partial class MainWindow : Window
         _notifications.Dispose();
         _battery.Dispose();
         _foreground.Stop();
+        _audio.Dispose();
     }
 
     // ---- 拖拽与点击 ----
