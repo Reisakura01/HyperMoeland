@@ -125,6 +125,38 @@ internal static class NativeMethods
     public static void SetAppUserModelId(string appId)
         => SetCurrentProcessExplicitAppUserModelID(appId);
 
+    // ---- 包身份（Sparse Package Identity） ----
+
+    private const int ERROR_INSUFFICIENT_BUFFER = 122;
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetCurrentPackageFamilyName(ref int packageFamilyNameLength,
+        [MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder? packageFamilyName);
+
+    /// <summary>
+    /// 取当前进程的包家族名（Package Family Name）。
+    /// 返回 null 表示进程**没有**包身份（未注册稀疏包，或不是从已注册的外部位置启动）。
+    /// 有身份时 UserNotificationListener 的事件订阅才可用（否则报 0x80070490）。
+    /// </summary>
+    public static string? TryGetPackageFamilyName()
+    {
+        try
+        {
+            int length = 0;
+            int hr = GetCurrentPackageFamilyName(ref length, null);
+            if (hr != ERROR_INSUFFICIENT_BUFFER || length <= 0) return null;
+
+            var sb = new System.Text.StringBuilder(length);
+            hr = GetCurrentPackageFamilyName(ref length, sb);
+            if (hr != 0) return null;
+            return sb.ToString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>强制把窗口置于 Z 序最顶层（不抢焦点、不改变位置尺寸、不强制显示）。
     /// 注意：不带 SWP_SHOWWINDOW，否则会把 Hide() 隐藏的窗口（全屏隐藏）又显示出来。</summary>
     public static void KeepTopmost(IntPtr hwnd)

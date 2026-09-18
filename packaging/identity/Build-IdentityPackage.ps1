@@ -1,0 +1,104 @@
+﻿param(
+    [Parameter(Mandatory)]
+    [ValidateSet('dev', 'stable')]
+    [string]$Channel,
+
+    [Parameter(Mandatory)]
+    [string]$Version,
+
+    [Parameter(Mandatory)]
+    [string]$CertificatePath,
+
+    [Parameter(Mandatory)]
+    [string]$CertificatePassword,
+
+    [Parameter(Mandatory)]
+    [string]$OutputDirectory
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Get-SdkTool([string]$Name) {
+    $roots = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\bin",
+        "$env:ProgramFiles\Windows Kits\10\bin"
+    )
+    foreach ($root in $roots) {
+        $tool = Get-ChildItem -Path $root -Filter $Name -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        if ($null -ne $tool) { return $tool.FullName }
+    }
+    throw "$Name 未找到，请先安装 Windows SDK（10 或 11）。"
+}
+
+$publisher = 'CN=MoeOrigin Team'
+
+$identity = switch ($Channel) {
+    'stable' { @{ Name = 'MoeOrigin.HyperMoeland';     DisplayName = 'HyperMoeland' } }
+    'dev'    { @{ Name = 'MoeOrigin.HyperMoeland.Dev'; DisplayName = 'HyperMoeland Development' } }
+}
+
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$stagingDirectory = Join-Path $OutputDirectory 'identity-staging'
+$assetsDirectory = Join-Path $stagingDirectory 'assets'
+$manifestPath = Join-Path $stagingDirectory 'AppxManifest.xml'
+$packagePath = Join-Path $OutputDirectory "$($identity.Name).msix"
+
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $stagingDirectory
+New-Item -ItemType Directory -Force -Path $stagingDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $assetsDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+# ---- 从 App.ico 生成清单所需的方形图标 ----
+Add-Type -AssemblyName System.Drawing
+$iconPath = Join-Path $repositoryRoot 'HyperMoeland\App.ico'
+if (-not (Test-Path $iconPath)) { throw "找不到应用图标：$iconPath" }
+
+function Export-IconPng([string]$icoPath, [int]$size, [string]$destination) {
+    $icon = New-Object System.Drawing.Icon($icoPath, $size, $size)
+    $bitmap = $icon.ToBitmap()
+    $canvas = New-Object System.Drawing.Bitmap($size, $size)
+    $graphics = [System.Drawing.Graphics]::FromImage($canvas)
+    $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $graphics.Clear([System.Drawing.Color]::Transparent)
+    $graphics.DrawImage($bitmap, 0, 0, $size, $size)
+    $graphics.Dispose()
+    $canvas.Save($destination, [System.Drawing.Imaging.ImageFormat]::Png)
+    $canvas.Dispose()
+    $bitmap.Dispose()
+    $icon.Dispose()
+}
+
+Export-IconPng $iconPath 44  (Join-Path $assetsDirectory 'Square44x44Logo.png')
+Export-IconPng $iconPath 150 (Join-Path $assetsDirectory 'Square150x150Logo.png')
+Export-IconPng $iconPath 50  (Join-Path $assetsDirectory 'StoreLogo.png')
+
+# ---- 生成清单 ----
+$manifest = Get-Content -Raw (Join-Path $PSScriptRoot 'AppxManifest.xml.template')
+$manifest = $manifest.Replace('{{PACKAGE_NAME}}', $identity.Name)
+$manifest = $manifest.Replace('{{PUBLISHER}}', $publisher)
+$manifest = $manifest.Replace('{{PACKAGE_VERSION}}', $Version)
+$manifest = $manifest.Replace('{{DISPLAY_NAME}}', $identity.DisplayName)
+Set-Content -Path $manifestPath -Value $manifest -Encoding utf8
+
+# ---- 打包 + 签名 ----
+$makeAppx = Get-SdkTool 'MakeAppx.exe'
+$signTool = Get-SdkTool 'SignTool.exe'
+
+Remove-Item -Force -ErrorAction SilentlyContinue $packagePath
+& $makeAppx pack /o /d $stagingDirectory /nv /p $packagePath
+if ($LASTEXITCODE -ne 0) { throw 'MakeAppx 打包失败。' }
+
+& $signTool sign /fd SHA256 /f $CertificatePath /p $CertificatePassword $packagePath
+if ($LASTEXITCODE -ne 0) { throw 'SignTool 签名失败。' }
+
+# ---- 导出公钥证书（用于导入受信任存储） ----
+$certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertificatePath, $CertificatePassword)
+$cerPath = Join-Path $OutputDirectory "$($identity.Name).cer"
+[IO.File]::WriteAllBytes($cerPath, $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+$certificate.Dispose()
+
+Write-Host "已生成身份包：$packagePath"
+Write-Host "已生成公钥证书：$cerPath"

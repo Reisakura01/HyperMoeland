@@ -1,29 +1,40 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using HyperMoeland.Interop;
 using Windows.UI.Notifications;
 using Windows.UI.Notifications.Management;
 
 namespace HyperMoeland.Services;
 
 /// <summary>
-/// 通知实时活动：监听系统 Toast 通知，读取来源 App + 通知正文（发送人/消息），
-/// 回调展示文本。首次 InitializeAsync 会弹"允许访问通知"的系统权限询问。
+/// 通知实时活动：监听系统 Toast 通知，读取来源 App + 通知正文（发送人/消息），回调展示文本。
 ///
-/// 说明：UserNotificationListener.NotificationChanged 事件在无打包 Win32 应用上
-/// 订阅会抛 0x80070490 (ERROR_NOT_FOUND)，因此改用「定时轮询 GetNotificationsAsync」
-/// 对比上次快照来检测新增通知（更可靠，跨版本兼容）。
+/// 双模式（自动选择）：
+///   • **事件订阅**（首选）：进程拥有 Windows 包身份时（通过 packaging/identity 注册稀疏包），
+///     可正常订阅 UserNotificationListener.NotificationChanged —— 实时、省资源。
+///   • **轮询回退**：无包身份时该事件订阅会抛 0x80070490 (ERROR_NOT_FOUND)，
+///     此时退化为定时轮询 GetNotificationsAsync 对比快照（兼容性兜底）。
+/// 外部通过 <see cref="UsesEventSubscription"/> 判断是否需要启动轮询定时器。
 /// </summary>
 internal sealed class NotificationService : IDisposable
 {
     private UserNotificationListener? _listener;
     private readonly HashSet<uint> _seenIds = new();
+    private bool _subscribed;
 
     /// <summary>新通知（参数为展示文本，如 "📩 微信 · 张三：在吗"）。</summary>
     public event Action<string>? NotificationAdded;
 
+    /// <summary>true = 已用官方事件订阅；false = 需要外部定时调用 <see cref="PollAsync"/>。</summary>
+    public bool UsesEventSubscription { get; private set; }
+
+    /// <summary>当前进程的包家族名；null 表示无包身份（仅用于诊断显示）。</summary>
+    public string? PackageFamilyName { get; private set; }
+
     public async Task<bool> InitializeAsync()
     {
+        PackageFamilyName = NativeMethods.TryGetPackageFamilyName();
         try
         {
             _listener = UserNotificationListener.Current;
@@ -33,7 +44,26 @@ internal sealed class NotificationService : IDisposable
                 _listener = null;
                 return false;
             }
-            // 初始化时把现有通知都记为"已见过"，避免启动时把历史通知全弹出来
+
+            // 有包身份 → 尝试官方事件订阅（实时推送）
+            if (PackageFamilyName is not null)
+            {
+                try
+                {
+                    _listener.NotificationChanged += OnNotificationChanged;
+                    _subscribed = true;
+                    UsesEventSubscription = true;
+                    return true;
+                }
+                catch
+                {
+                    // 订阅失败（系统差异等）→ 继续走轮询兜底
+                    _subscribed = false;
+                    UsesEventSubscription = false;
+                }
+            }
+
+            // 无身份 / 订阅失败 → 轮询模式：先记录快照，避免启动时把历史通知全弹出来
             await SnapshotAsync();
             return true;
         }
@@ -44,10 +74,25 @@ internal sealed class NotificationService : IDisposable
         }
     }
 
-    /// <summary>轮询一次：把新增的 Toast 通知回调出去（供外部定时器调用）。</summary>
+    /// <summary>事件订阅回调（可能在非 UI 线程触发，订阅方需自行封送）。</summary>
+    private void OnNotificationChanged(UserNotificationListener sender, UserNotificationChangedEventArgs args)
+    {
+        if (args.ChangeKind != UserNotificationChangedKind.Added) return;
+        try
+        {
+            var n = sender.GetNotification(args.UserNotificationId);
+            if (n is not null) NotificationAdded?.Invoke(BuildDisplay(n));
+        }
+        catch
+        {
+            // 单条通知读取失败，忽略
+        }
+    }
+
+    /// <summary>轮询一次（仅在非事件订阅模式下使用）：把新增的 Toast 通知回调出去。</summary>
     public async Task PollAsync()
     {
-        if (_listener is null) return;
+        if (_listener is null || UsesEventSubscription) return;
         try
         {
             var notifs = await _listener.GetNotificationsAsync(NotificationKinds.Toast);
@@ -72,7 +117,7 @@ internal sealed class NotificationService : IDisposable
         }
     }
 
-    /// <summary>仅更新快照，不触发回调（初始化时用）。</summary>
+    /// <summary>仅更新快照，不触发回调（轮询模式初始化时用）。</summary>
     private async Task SnapshotAsync()
     {
         if (_listener is null) return;
@@ -116,6 +161,11 @@ internal sealed class NotificationService : IDisposable
 
     public void Dispose()
     {
+        if (_listener is not null && _subscribed)
+        {
+            try { _listener.NotificationChanged -= OnNotificationChanged; } catch { }
+        }
+        _subscribed = false;
         _listener = null;
     }
 }

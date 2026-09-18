@@ -105,7 +105,8 @@ public partial class MainWindow : Window
         _mouseHook.LeftButtonDown += OnGlobalLeftDown;
         _progressTimer.Start();
         _notificationTimer.Tick += async (_, _) => await _notifications.PollAsync();
-        _notificationTimer.Start();
+        // 注意：轮询定时器不在这里启动——等通知服务初始化后，
+        // 仅在「无包身份 → 轮询回退」模式下才启动（有身份时用事件订阅，无需轮询）。
 
         if (SettingsService.Current.AutoUpdate)
             _ = CheckForUpdatesAsync();   // 启动后检查 GitHub 是否有新版本
@@ -118,13 +119,15 @@ public partial class MainWindow : Window
         // 各自独立 try/catch：媒体初始化失败不影响通知（反之亦然）
         try { await _media.InitializeAsync(); } catch { }
 
-        // 通知：轮询方案无需订阅事件，直接在任意线程 await 即可。
+        // 通知：有包身份时用官方事件订阅；否则回退轮询。
         // 授权失败时提示用户去系统设置开启"通知访问权限"。
         try
         {
             bool ok = await _notifications.InitializeAsync();
             if (!ok && _tray is not null)
                 _tray.ShowUpdate(LocalizationService.T("Notif.PermissionHint"), string.Empty);
+            else if (ok && !_notifications.UsesEventSubscription)
+                _notificationTimer.Start();   // 仅轮询模式需要定时器
         }
         catch { }
     }

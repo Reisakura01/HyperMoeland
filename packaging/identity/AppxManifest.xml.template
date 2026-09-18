@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HyperMoeland 稀疏包（Sparse Package）清单模板。
+  作用：为「包外」的 HyperMoeland.exe 授予 Windows 包身份（Package Identity），
+        从而解锁需要身份的 WinRT 能力——最典型的是 UserNotificationListener
+        的事件订阅（无身份时会报 0x80070490 ERROR_NOT_FOUND）。
+
+  占位符由 Build-IdentityPackage.ps1 替换：
+    {{PACKAGE_NAME}} / {{PUBLISHER}} / {{PACKAGE_VERSION}} / {{DISPLAY_NAME}}
+
+  注意：Publisher 必须与签名证书的 Subject 完全一致（均为 CN=MoeOrigin Team）。
+-->
+<Package IgnorableNamespaces="uap uap10"
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+
+  <Identity Name="{{PACKAGE_NAME}}"
+            Publisher="{{PUBLISHER}}"
+            Version="{{PACKAGE_VERSION}}"
+            ProcessorArchitecture="neutral" />
+
+  <Properties>
+    <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+    <PublisherDisplayName>MoeOrigin Team</PublisherDisplayName>
+    <Logo>assets\Square150x150Logo.png</Logo>
+    <!-- 允许内容位于包外（exe 放在外部目录） -->
+    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
+  </Properties>
+
+  <Resources>
+    <Resource Language="zh-cn" />
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <!-- 桌面应用全信任 + 不做文件/注册表虚拟化（保持 %LOCALAPPDATA% 等真实路径） -->
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="HyperMoeland"
+                 Executable="HyperMoeland.exe"
+                 uap10:TrustLevel="mediumIL"
+                 uap10:RuntimeBehavior="win32App">
+      <uap:VisualElements AppListEntry="none"
+                          DisplayName="{{DISPLAY_NAME}}"
+                          Description="Dynamic Island for Windows"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="assets\Square150x150Logo.png"
+                          Square44x44Logo="assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+</Package>
