@@ -180,6 +180,62 @@ notification listening to the official system event subscription — real time, 
 应用提供托盘菜单，可从中「退出」，符合桌面应用的正常退出方式。
 ```
 
+### 受限能力说明（提交时后台会要求单独填写）
+
+上传包后会出现验证警告：
+
+> The following restricted capabilities require approval before you can use them in your app:
+> **runFullTrust, userNotificationListener**.
+
+这是**警告不是错误**（包已验证通过，可继续提交），但提交时必须为每个受限能力填写用途说明。
+若后台没有单独的「受限能力说明」输入框，就把下面两段一并写进**审核备注**。
+
+**① runFullTrust —— 例行声明，桌面应用都需要**
+
+```
+Islora is a desktop application built with .NET/WPF and packaged as a full-trust MSIX
+(desktop bridge). Like any packaged Win32 application, it runs at medium integrity level
+outside the AppContainer, so it must declare the runFullTrust restricted capability.
+This is the standard requirement for packaged desktop apps; the app does not use it to
+perform any privileged operation that the signed-in user could not already perform.
+```
+
+**② userNotificationListener —— 需要说明理由的那个**
+
+```
+Islora is a status capsule that stays at the top of the screen. It uses the User Notification
+Listener capability for exactly one purpose: to read the sender and body of Windows toast
+notifications so it can display them briefly on the capsule (about five seconds), letting the
+user see who said what without switching windows.
+
+ - Notification content is used only for that immediate on-device display. It is never written
+   to disk, never uploaded, and never shared with any third party. It is discarded as soon as
+   the on-screen message disappears.
+ - No notification data is logged, aggregated, or analyzed, and the app contains no telemetry.
+ - Access is requested through UserNotificationListener.RequestAccessAsync(). The app works only
+   after the user explicitly grants notification access in Windows Settings; if the user declines
+   or later revokes it (Settings → Privacy & security → Notifications), the app keeps working
+   normally and simply stops showing notifications.
+ - Reviewers can verify the display path at any time from the tray icon's context menu
+   ("Test notification"), which shows a locally generated sample message.
+ - Reading notifications is the core feature of this app: it is a notification-display utility,
+   and without this capability the app cannot fulfil its stated purpose.
+
+The app does not collect, transmit, or sell any user data. See the privacy policy:
+https://reisakura01.github.io/Islora/privacy.html
+```
+
+### 如果 userNotificationListener 没被批准
+
+它决定的是**打包（Store）版能否读取系统通知**。一旦被拒，两条路：
+
+1. **去掉该能力重新提交**：应用照常运行，只是不再显示系统通知（其余功能不受影响）。
+   出包时把 `packaging/store/AppxManifest.xml.template` 里那行
+   `<rescap:Capability Name="userNotificationListener" />` 删掉即可。
+2. 继续争取：补充更具体的说明（例如说明这是应用的核心功能、数据完全不外传）。
+
+> `runFullTrust` 几乎不会出问题——它是所有 Win32/WPF 打成 MSIX 的应用的标配声明。
+
 ---
 
 ## 九、截图拍摄指南
