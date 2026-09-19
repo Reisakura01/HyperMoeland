@@ -124,12 +124,19 @@ internal sealed class MediaService : IDisposable
 
             var now = DateTime.UtcNow;
             var pos = rawPos;
-            // 平滑：源位置更新稀疏（如浏览器）时按墙钟外推，让进度条/时间连续走
+            // 平滑：源位置更新稀疏（如浏览器）时按墙钟外推，让进度条/时间连续走。
+            //
+            // ⚠️ 基准 _lastRawTime 必须同时覆盖「暂停中」的情况：
+            // 它原来只在 rawPos 变化时更新，暂停期间既不外推也不刷新基准，
+            // 于是恢复播放的第一帧会把**整个暂停时长**加进位置（暂停 10 分钟 → +600 秒），
+            // 位置被截断到总时长，进度条瞬间显示「已播完」。
             if (dur > 0 && playing && _lastRawPos >= 0 && rawPos == _lastRawPos)
             {
-                pos = rawPos + (now - _lastRawTime).TotalSeconds;
+                var extrapolated = (now - _lastRawTime).TotalSeconds;
+                // 再加一道保险：外推最多 2 秒，避免任何异常基准导致跳变
+                if (extrapolated > 0 && extrapolated <= 2.0) pos = rawPos + extrapolated;
             }
-            if (rawPos != _lastRawPos) { _lastRawPos = rawPos; _lastRawTime = now; }
+            if (rawPos != _lastRawPos || !playing) { _lastRawPos = rawPos; _lastRawTime = now; }
 
             if (pos < 0) pos = 0;
             if (dur > 0 && pos > dur) pos = dur;

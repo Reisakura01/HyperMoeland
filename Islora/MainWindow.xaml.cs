@@ -35,7 +35,7 @@ public partial class MainWindow : Window
     private readonly ForegroundWatcher _foreground = new();
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     private readonly DispatcherTimer _audioTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
     private readonly AudioService _audio = new();
     private readonly float[] _audioBands = new float[6];
@@ -47,6 +47,14 @@ public partial class MainWindow : Window
     private bool _fullscreen;
     private bool _mediaActive;
     private int _mediaSeq;
+    private bool _polling;   // 通知轮询是否在途（防止重叠堆积）
+
+    /// <summary>
+    /// 当前岛所在的显示器工作区。跟随前台窗口换屏时更新，
+    /// 展开/收起/吸附一律以它为准——否则会把岛搬回主屏，
+    /// 与「多显示器跟随」自相矛盾。
+    /// </summary>
+    private WorkArea _workArea = MonitorHelper.GetPrimaryWorkArea();
 
     // 拖拽状态（系统级拖拽：位移超阈值后交给系统标题栏拖拽）
     private bool _systemDragging;
@@ -116,7 +124,16 @@ public partial class MainWindow : Window
         _systemMonitor.Changed += (cpu, mem) => Card.SetWidgets(cpu, mem, _systemMonitor.MemoryUsedGb, _systemMonitor.MemoryTotalGb);
         _widgetTimer.Tick += (_, _) => _systemMonitor.Poll();
         ApplyWidgetSettings();
-        _notificationTimer.Tick += async (_, _) => await _notifications.PollAsync();
+        _notificationTimer.Tick += async (_, _) =>
+        {
+            // 单次轮询实测要 350ms+（枚举系统通知的 WinRT 调用很贵），
+            // 1 秒间隔会让多次轮询重叠堆积（日志里见过 3 秒的样本）。
+            // 这里加个在途标记，上一轮没结束就跳过本轮。
+            if (_polling) return;
+            _polling = true;
+            try { await _notifications.PollAsync(); }
+            finally { _polling = false; }
+        };
         // 注意：轮询定时器不在这里启动——等通知服务初始化后，
         // 仅在「无包身份 → 轮询回退」模式下才启动（有身份时用事件订阅，无需轮询）。
 
@@ -262,10 +279,17 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    /// <summary>拖拽结束吸附：顶部对齐，水平方向吸到 左/中/右 最近一侧。</summary>
+    /// <summary>
+    /// 拖拽结束吸附：顶部对齐，水平方向吸到 左/中/右 最近一侧。
+    /// 以**窗口当前所在显示器**为基准（用户可能刚把它拖到副屏）。
+    /// </summary>
     private void SnapToEdges()
     {
-        var work = MonitorHelper.GetPrimaryWorkArea();
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var monitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        var work = MonitorHelper.GetWorkArea(monitor);
+        _workArea = work;
+
         double scale = DpiScale;
         double workX = work.X / scale;
         double workW = work.Width / scale;
@@ -279,10 +303,25 @@ public partial class MainWindow : Window
         };
         double targetX = xs.OrderBy(x => Math.Abs(x - Left)).First();
 
-        // 平滑缓动（比 QuinticEase 温和，且是标准 EasingFunction 能可靠缩放透明窗口）
+        // ⚠️ 先清掉 Left/Top 上可能残留的填充动画。
+        // BeginAnimation 默认 FillBehavior.HoldEnd 会让动画时钟停在填充态，
+        // 而动画的优先级高于本地值 —— 之后 AnimateTo 里的 `Left = ...` 会**永久失效**，
+        // 表现为：拖拽吸附过一次之后，展开卡片时位置不居中（可能跑出屏幕）、
+        // 多显示器跟随也不再生效，且只能重启应用才能恢复。
+        // 因此这里用 FillBehavior.Stop + 预置本地值：动画只做过渡，结束即释放属性。
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+
+        double fromLeft = Left, fromTop = Top;
+        Left = targetX;
+        Top = workY;
+
         var ease = new SineEase { EasingMode = EasingMode.EaseOut };
-        BeginAnimation(LeftProperty, new DoubleAnimation { To = targetX, Duration = TimeSpan.FromMilliseconds(180), EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
-        BeginAnimation(TopProperty, new DoubleAnimation { To = workY, Duration = TimeSpan.FromMilliseconds(180), EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
+        var dur = TimeSpan.FromMilliseconds(180);
+        BeginAnimation(LeftProperty, new DoubleAnimation(fromLeft, targetX, dur)
+        { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+        BeginAnimation(TopProperty, new DoubleAnimation(fromTop, workY, dur)
+        { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
     }
 
     // ---- 主题 / 服务事件 ----
@@ -390,8 +429,16 @@ public partial class MainWindow : Window
     private void OnFullscreenChanged(bool fullscreen)
     {
         _fullscreen = fullscreen;
-        if (fullscreen) Hide();
-        else Show();
+        if (fullscreen) { Hide(); return; }
+
+        // 退出全屏：全屏期间丢弃过 MonitorChanged，这里补一次定位，
+        // 否则岛会停在进入全屏前的那块屏上，一直等到下次跨屏切换才纠正。
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var monitor = NativeMethods.MonitorFromWindow(hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        if (monitor != IntPtr.Zero) _workArea = MonitorHelper.GetWorkArea(monitor);
+        Show();
+        var (w, h) = SizeFor();
+        AnimateTo(_workArea, w, h, animate: false);
     }
 
     /// <summary>全局左键按下：展开态下点在岛窗口外任意处 → 自动缩回胶囊。</summary>
@@ -415,7 +462,6 @@ public partial class MainWindow : Window
         if (_fullscreen) return;
         Reposition(work);
     }
-
     private void OnStateChanged(IslandState state)
     {
         bool expanding = state == IslandState.Expanded;
@@ -425,12 +471,18 @@ public partial class MainWindow : Window
         if (expanding) PositionExpanded();
         else PositionCompact();
 
-        // 尺寸瞬间定位（不缩放透明窗口），改做内容快速淡入，既可靠又顺滑
+        // 尺寸瞬间定位（不缩放透明窗口），改做内容快速淡入，既可靠又顺滑。
+        // 先清掉上一次的填充动画，否则 `Opacity = 1`（本地值）会被残留动画压住，
+        // 第二次起淡入就完全失效（相同的 HoldEnd 陷阱）。
         var target = expanding ? (System.Windows.UIElement)Card : (System.Windows.UIElement)Pill;
-        target.Opacity = 0;
+        target.BeginAnimation(UIElement.OpacityProperty, null);
+        target.Opacity = 1;
         target.BeginAnimation(UIElement.OpacityProperty,
-            new DoubleAnimation(1, TimeSpan.FromMilliseconds(150))
-            { EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut } });
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop,
+            });
     }
 
     // ---- 定位（DPI 感知） ----
@@ -449,6 +501,7 @@ public partial class MainWindow : Window
 
     private void Reposition(WorkArea work)
     {
+        _workArea = work;
         var (w, h) = SizeFor();
         AnimateTo(work, w, h, animate: true);
     }
@@ -456,13 +509,13 @@ public partial class MainWindow : Window
     private void PositionCompact(bool animate = true)
     {
         var (w, h) = SizeFor();
-        AnimateTo(MonitorHelper.GetPrimaryWorkArea(), w, h, animate);
+        AnimateTo(_workArea, w, h, animate);
     }
 
     private void PositionExpanded(bool animate = true)
     {
         var (w, h) = SizeFor();
-        AnimateTo(MonitorHelper.GetPrimaryWorkArea(), w, h, animate);
+        AnimateTo(_workArea, w, h, animate);
     }
 
     private void AnimateTo(WorkArea work, double width, double height, bool animate)

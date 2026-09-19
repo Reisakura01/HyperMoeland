@@ -22,6 +22,18 @@ internal sealed class WasapiLoopbackCapture : IDisposable
     private const uint AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000;
     private const long REFTIMES_PER_SEC = 10_000_000;   // 100ns 单位
 
+    // 设备失效类错误：一旦出现就必须退出采集循环、交给外层重建 IAudioClient。
+    // 否则采集线程会在循环里空转，频谱永久失效直到重启应用。
+    private const int AUDCLNT_E_DEVICE_INVALIDATED = unchecked((int)0x88890004);
+    private const int AUDCLNT_E_RESOURCES_INVALIDATED = unchecked((int)0x88890026);
+    private const int AUDCLNT_E_SERVICE_NOT_RUNNING = unchecked((int)0x88890010);
+
+    /// <summary>该 HRESULT 是否表示「设备/资源已失效，需要重建客户端」。</summary>
+    private static bool IsFatalDeviceError(int hr)
+        => hr == AUDCLNT_E_DEVICE_INVALIDATED
+        || hr == AUDCLNT_E_RESOURCES_INVALIDATED
+        || hr == AUDCLNT_E_SERVICE_NOT_RUNNING;
+
     private static readonly Guid IID_IAudioClient = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
     private static readonly Guid IID_IAudioCaptureClient = new("C8ADBD64-E71E-48a0-A4DE-185C395CD317");
 
@@ -129,13 +141,28 @@ internal sealed class WasapiLoopbackCapture : IDisposable
         }
     }
 
+    /// <summary>
+    /// 收包直到设备失效或停止。
+    /// 关键：遇到「设备失效」类错误必须 **return**（而不是继续空转），
+    /// 让 CaptureLoop 走 finally 释放旧客户端并重新 CreateLoopbackClient，
+    /// 否则运行中插拔耳机/切换默认播放设备后，频谱会永久失效。
+    /// </summary>
     private void CapturePackets(IAudioCaptureClient captureClient)
     {
         var scratch = new float[4096];
         while (_running)
         {
             var hr = captureClient.GetNextPacketSize(out uint packetFrames);
-            if (hr != 0) { Thread.Sleep(20); continue; }
+            if (hr != 0)
+            {
+                if (IsFatalDeviceError(hr))
+                {
+                    LastError = $"GetNextPacketSize hr=0x{hr:X8}（音频设备已失效，正在重建采集）";
+                    return;
+                }
+                Thread.Sleep(20);
+                continue;
+            }
 
             if (packetFrames == 0)
             {
@@ -144,7 +171,16 @@ internal sealed class WasapiLoopbackCapture : IDisposable
             }
 
             hr = captureClient.GetBuffer(out IntPtr data, out uint frames, out uint flags, out _, out _);
-            if (hr != 0) { Thread.Sleep(20); continue; }
+            if (hr != 0)
+            {
+                if (IsFatalDeviceError(hr))
+                {
+                    LastError = $"GetBuffer hr=0x{hr:X8}（音频设备已失效，正在重建采集）";
+                    return;
+                }
+                Thread.Sleep(20);
+                continue;
+            }
 
             const uint AUDCLNT_BUFFERFLAGS_SILENT = 0x2;
             if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 && data != IntPtr.Zero && frames > 0)

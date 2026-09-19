@@ -343,18 +343,38 @@ public partial class ExpandedCard : UserControl
         }
     }
 
-    /// <summary>常驻充电状态：闪电做柔和呼吸（0.6↔1.0），表示正在充电。</summary>
+    /// <summary>
+    /// 常驻充电状态：闪电做柔和呼吸，表示正在充电。
+    ///
+    /// 与 CompactPill 同理，走**低帧率阶梯**而非 WPF 连续动画：
+    /// 本窗口 AllowsTransparency=True（软件渲染），连续动画会让整窗 60fps 重绘，
+    /// 实测空闲时白烧约 9.6% 单核。每 260ms 一档（约 3.8fps）观感几乎一致，重绘量降到约 1/16。
+    /// </summary>
+    private static readonly double[] BreathLevels = { 0.60, 0.66, 0.74, 0.83, 0.92, 1.00, 0.92, 0.83, 0.74, 0.66 };
+    private readonly DispatcherTimer _breathTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
+    private int _breathStep;
+    private bool _breathHooked;
+
     private void StartChargingBreath()
     {
         // 若已拔电则不再启动呼吸
         if (!_charging || ChargingIcon.Visibility != Visibility.Visible) return;
-        ChargingIcon.BeginAnimation(UIElement.OpacityProperty,
-            new DoubleAnimation(0.6, 1.0, TimeSpan.FromMilliseconds(900))
+        ChargingIcon.BeginAnimation(UIElement.OpacityProperty, null);   // 兼容旧的连续动画
+        if (!_breathHooked)
+        {
+            _breathTimer.Tick += (_, _) =>
             {
-                AutoReverse = true,
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                RepeatBehavior = RepeatBehavior.Forever,
-            });
+                if (!_charging || ChargingIcon.Visibility != Visibility.Visible)
+                {
+                    _breathTimer.Stop();
+                    return;
+                }
+                _breathStep = (_breathStep + 1) % BreathLevels.Length;
+                ChargingIcon.Opacity = BreathLevels[_breathStep];
+            };
+            _breathHooked = true;
+        }
+        if (!_breathTimer.IsEnabled) _breathTimer.Start();
     }
 
     private void UpdateClock()

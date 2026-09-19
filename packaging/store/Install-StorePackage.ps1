@@ -49,6 +49,27 @@ function Test-CertTrusted([string]$Thumbprint) {
         Where-Object { $_.Thumbprint -eq $Thumbprint })
 }
 
+# 从 .msix 里直接读清单的 Identity Name（msix 就是 zip，无需解包）
+# 这样默认包名永远与「实际打出来的包」一致，不会出现
+# 「装进去了却按另一个名字查不到」的情况。
+function Get-PackageNameFromMsix([string]$Path) {
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
+        try {
+            $entry = $zip.Entries | Where-Object { $_.FullName -eq 'AppxManifest.xml' } | Select-Object -First 1
+            if (-not $entry) { return $null }
+            $reader = New-Object System.IO.StreamReader($entry.Open())
+            try { $xml = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $m = [regex]::Match($xml, '<Identity[^>]*\bName="([^"]+)"')
+            if ($m.Success) { return $m.Groups[1].Value }
+            return $null
+        }
+        finally { $zip.Dispose() }
+    }
+    catch { return $null }
+}
+
 # ---- 卸载 ----
 if ($Uninstall) {
     # 精确匹配：只删指定的包，避免误伤 packaging/identity 注册的稀疏包
@@ -56,9 +77,17 @@ if ($Uninstall) {
         $packages = Get-AppxPackage -FamilyName $PackageFamilyName
     }
     else {
-        $packages = Get-AppxPackage -Name $PackageName
+        # 若目录里有构建好的 msix，优先按它的真实身份卸载
+        $guess = $PackageName
+        $candidate = Get-ChildItem (Join-Path $repositoryRoot 'artifacts\store') -Filter *.msix -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($candidate) {
+            $fromMsix = Get-PackageNameFromMsix $candidate.FullName
+            if ($fromMsix) { $guess = $fromMsix }
+        }
+        $packages = Get-AppxPackage -Name $guess
     }
-    if (-not $packages) { Write-Host "没有找到已安装的包（PackageName=$PackageName）。"; return }
+    if (-not $packages) { Write-Host "没有找到已安装的包（PackageName=$guess）。"; return }
     foreach ($p in @($packages)) {
         Write-Host "卸载 $($p.PackageFullName) ..." -ForegroundColor Cyan
         Remove-AppxPackage -Package $p.PackageFullName
@@ -76,6 +105,14 @@ if ([string]::IsNullOrWhiteSpace($MsixPath)) {
 }
 $MsixPath = (Resolve-Path $MsixPath).Path
 Write-Host "安装包: $MsixPath" -ForegroundColor Cyan
+
+# 包名以包内清单为准（覆盖安装/回读都用它）
+$fromManifest = Get-PackageNameFromMsix $MsixPath
+if ($fromManifest) {
+    if ($fromManifest -ne $PackageName) { Write-Host "（包内清单身份为 $fromManifest，已覆盖 -PackageName 默认值 $PackageName）" -ForegroundColor DarkGray }
+    $PackageName = $fromManifest
+}
+else { Write-Host "（未能从包内读取身份，沿用 -PackageName=$PackageName）" -ForegroundColor Yellow }
 
 # 证书信任检查（自签证书必须进「受信任人」才能安装）
 $signature = Get-AuthenticodeSignature $MsixPath
