@@ -223,3 +223,56 @@ notification listening to the official system event subscription — real time, 
 （不含桌面其它内容），再放到 1920×1080 的纯色底上导出 PNG。
 这样绝对不含隐私，缺点是画面里没有「真实使用场景」的氛围感。
 要的话说一声，并把你想用的底色（深色 / 浅色 / 指定色值）告诉我。
+
+---
+
+## 十、定价与可用性（Pricing and availability）逐项填写
+
+这一页有四大块，**从上到下**依次是 Markets → Visibility → Schedule → Pricing。
+后台界面是英文，下表「选这个」一列给的就是界面上的英文原文，照着点即可。
+
+| # | 区块 | 字段 | 选这个 | 为什么 |
+|---|---|---|---|---|
+| 1 | **Markets** | 市场 | **保持默认：所有可用市场**（`Your app will be offered in all possible markets`） | 应用免费、无地区特定内容、界面中英双语，没有需要排除的市场。⚠️ 若手点过 `Select markets`，务必确认**中国**在列表里 |
+| 2 | **Visibility** | Discoverability | **`Make this product available and discoverable in the Store`**（默认项） | 只有这一项能被搜索、浏览、进入推荐列表 |
+| 3 | **Visibility** | Audience | **`Public`**（默认项） | 公开发布。`Private audience` 是按邮箱名单限定（上限约 1 万），只适合内测 |
+| 4 | **Schedule** | Release | **`as soon as possible`**（默认项） | 认证通过后自动上架 |
+| 5 | **Schedule** | Stop acquisition | **留空** | 不设下架日期 |
+| 6 | **Pricing** | Base price | **`Free`** | MIT 协议、永久免费 |
+| 7 | **Pricing** | Free trial / Sale price | **不动** | 只有付费应用才出现这些选项 |
+| 8 | **Pricing** | 价格变更排期 / 各市场单独定价 | **不动** | 免费应用无需配置 |
+
+### 三个必须注意的点
+
+1. **不要选 `Make this product available but not discoverable in the Store`。**
+   选了之后商店里搜不到、浏览不到（只能靠直链访问），而且按官方文档，
+   **Schedule 区块会直接不可配置**——连上线时间都没法设。
+2. **免费应用不需要税务 / 收款资料。**
+   后台若提示补 tax / payout 信息，那是给付费应用用的
+   （微软官方措辞是 "before you can charge money"）。走免费路线可以忽略，也省掉一堆合规填表。
+3. **发布之后，Schedule 里的 Release 选项会消失**（已发布，不再可改）。
+   若想把上线时间卡在某个具体时刻（比如配合宣传），**必须在第一次提交时就选 `at <日期时间>`**；
+   否则用默认的「越快越好」。时间口径还有 `UTC`（全球同时上线）/ `Local`（各市场本地时间）之分。
+
+### 这一页**不**管的两件事
+
+- **支持哪些 Windows 版本**：由包内清单的 `TargetDeviceFamily MinVersion="10.0.22000.0"` 决定，
+  商店会自动只向 **Windows 11** 用户展示，本页没有开关可调（我们的包就是这个设置，符合预期）。
+- Schedule 里设的日期**只对 Windows 10 / 11 的客户生效**（官方注明）。
+
+### 照抄版（最省事）
+
+```
+Markets           → 默认（所有可用市场）
+Discoverability   → Make this product available and discoverable in the Store
+Audience          → Public
+Release           → as soon as possible
+Stop acquisition  → 留空
+Base price        → Free
+其余所有选项       → 不动
+```
+
+### 来源
+
+- [Pricing and availability 页面说明](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/price-and-availability)
+- [配置发布时间（Schedule）](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/configure-release-schedule)
