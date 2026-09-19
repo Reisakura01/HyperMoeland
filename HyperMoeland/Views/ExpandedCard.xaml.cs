@@ -263,21 +263,6 @@ public partial class ExpandedCard : UserControl
         MediaTimeDur.Text = FormatTime(dur);
     }
 
-    /// <summary>设置歌词显示（当前行 / 翻译 / 下一行）；无歌词时隐藏整块。</summary>
-    public void SetLyrics(string? current, string? next, string? translation)
-    {
-        bool has = !string.IsNullOrWhiteSpace(current) || !string.IsNullOrWhiteSpace(next);
-        LyricsArea.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
-        if (!has) return;
-
-        LyricCurrent.Text = current ?? string.Empty;
-        LyricNext.Text = string.IsNullOrWhiteSpace(next) ? string.Empty : next;
-
-        bool hasTranslation = !string.IsNullOrWhiteSpace(translation);
-        LyricTranslation.Visibility = hasTranslation ? Visibility.Visible : Visibility.Collapsed;
-        LyricTranslation.Text = translation ?? string.Empty;
-    }
-
     /// <summary>点击进度条跳转：按点击位置换算成秒，触发 SeekRequested。</summary>
     private void OnProgressTrackMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

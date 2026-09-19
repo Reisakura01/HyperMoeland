@@ -19,7 +19,6 @@
 | 🔐 **包身份（可选）** | 通过 `packaging/identity` 注册**稀疏包身份**，通知改用官方事件订阅（实时、零轮询），并解锁更多系统能力 |
 | 🔋 **电量** | 展开卡片显示电量百分比 + 插拔电闪电指示 |
 | 🧩 **系统小组件** | 展开卡片显示 **CPU 占用率 / 内存占用率**（环形进度 + 悬停显示 `已用 / 总量` GB），可在设置中关闭 |
-| 🔉 **音量指示** | 调节系统音量时胶囊直接显示音量条（1.6 秒后自动复原），不必只依赖 Windows 原生 OSD |
 | 🌗 **日夜自动切换** | 默认 6:00–19:00 浅色胶囊，其余夜间深色胶囊；随时可改 |
 | 🌐 **中英双语** | 设置内可切换中文 / English，即时生效并持久化 |
 | 🖥️ **全屏自动隐藏** | 前台窗口全屏（视频/游戏）时自动隐藏岛，退出全屏恢复 |
@@ -50,7 +49,7 @@
 - **Windows SDK 10.0.26100**（TFM `net10.0-windows10.0.26100.0`）
 - **WinRT：SMTC**（媒体会话）、**UserNotificationListener**（通知）、**Battery**（电量）
 - **WASAPI 环回采集 + 手写 1024 点 FFT**（音频频谱，纯 COM 互操作，无第三方库）
-- **Win32/DWM P/Invoke**（窗口样式、不抢焦点、显示器、前台窗口、系统音量、CPU/内存）
+- **Win32/DWM P/Invoke**（窗口样式、不抢焦点、显示器、前台窗口、CPU/内存）
 - **Inno Setup 6**（安装包）+ **MSIX 稀疏包身份**（可选，启用官方通知事件订阅）
 
 ---
@@ -109,7 +108,6 @@ HyperMoeland/
     │   └── IslandController.cs      # 紧凑/展开状态机
     ├── Models/
     │   ├── MediaSessionInfo.cs      # 媒体会话快照（曲名/歌手/封面/播放状态）
-    │   ├── LyricsLine.cs            # 单行歌词（时间 + 原文 + 译文）
     │   └── AppSettings.cs           # 设置（主题/自启/语言/霓虹节拍/小组件开关）
     ├── Theme/
     │   ├── AppTheme.cs              # Day / Night 枚举
@@ -120,22 +118,18 @@ HyperMoeland/
     │   ├── MicaController.cs        # 应用窗口样式 + 暗色模式 + 不抢焦点
     │   ├── MonitorHelper.cs         # 主屏 / 指定屏工作区
     │   ├── WasapiLoopbackCapture.cs # WASAPI 环回采集（系统正在播放的声音）
-    │   ├── SystemVolume.cs          # IAudioEndpointVolume（读/写系统主音量）
     │   └── SystemInfo.cs            # GetSystemTimes + GlobalMemoryStatusEx
     ├── Services/
     │   ├── MediaService.cs          # SMTC 媒体会话（信息/控制/进度，含时间平滑外推）
     │   ├── NotificationService.cs   # 系统通知监听（事件订阅 / 轮询双模）+ 读取 Toast 正文
     │   ├── AudioService.cs          # 1024 点 FFT → 6 频段频谱 + 音量包络
-    │   ├── LyricsService.cs         # 歌词调度：SMTC 进度对齐 / 本地时钟兜底 + 缓存
-    │   ├── Lyrics/                  # LRC 解析 + 多源提供者（网易云 / LRCLIB）
-    │   ├── VolumeService.cs         # 音量变化轮询 → 胶囊音量条
     │   ├── SystemMonitorService.cs  # CPU / 内存采样（小组件数据源）
     │   ├── BatteryService.cs        # 电量百分比
     │   ├── ForegroundWatcher.cs     # 全屏检测 + 多显示器跟随
     │   └── TrayIcon.cs              # 系统托盘（设置/开机自启/测试通知/退出）
     └── Views/
-        ├── CompactPill.xaml(.cs)    # 紧凑胶囊（时钟/媒体封面/通知/音量条）
-        ├── ExpandedCard.xaml(.cs)   # 展开卡片（时钟卡+小组件 / 媒体大面板+频谱+歌词）
+        ├── CompactPill.xaml(.cs)    # 紧凑胶囊（时钟/媒体封面/通知）
+        ├── ExpandedCard.xaml(.cs)   # 展开卡片（时钟卡+小组件 / 媒体大面板+频谱）
         ├── SystemWidgets.xaml(.cs)  # CPU / 内存环形小组件
         └── SettingsWindow.xaml(.cs) # 设置窗口
 ```

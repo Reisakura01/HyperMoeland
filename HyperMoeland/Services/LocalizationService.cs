@@ -50,7 +50,6 @@ internal static class LocalizationService
         ["Card.Next"]             = ("下一首", "Next"),
         ["Card.Battery"]          = ("电量 {0}%", "Battery {0}%"),
         ["Card.BatteryUnknown"]   = ("电量 --", "Battery --"),
-        ["Card.LyricsWaiting"]    = ("歌词加载中…", "Loading lyrics…"),
 
         // ---- 系统小组件 ----
         ["Widget.Cpu"]            = ("CPU", "CPU"),

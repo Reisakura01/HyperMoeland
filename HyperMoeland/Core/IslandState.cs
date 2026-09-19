@@ -15,5 +15,5 @@ public static class IslandMetrics
     public const double ExpandedWidth = 250;        // 时钟卡
     public const double ExpandedHeight = 200;       // 含 CPU / 内存小组件
     public const double MediaExpandedWidth = 460;   // 媒体大面板（小米超级岛）
-    public const double MediaExpandedHeight = 320;  // 含音频频谱 + 歌词区
+    public const double MediaExpandedHeight = 250;  // 含音频频谱条（实测内容高 220）
 }

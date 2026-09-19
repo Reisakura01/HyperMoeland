@@ -40,12 +40,8 @@ public partial class MainWindow : Window
     private readonly AudioService _audio = new();
     private readonly float[] _audioBands = new float[6];
     private bool _audioStarted;
-    private readonly LyricsService _lyrics = new();
-    private readonly VolumeService _volume = new();
     private readonly SystemMonitorService _systemMonitor = new();
     private readonly DispatcherTimer _widgetTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private int _volumePollTick;
-    private bool _mediaPlaying;
     private TrayIcon? _tray;
     private GlobalMouseHook? _mouseHook;
     private bool _fullscreen;
@@ -116,8 +112,6 @@ public partial class MainWindow : Window
         _progressTimer.Start();
         _audioTimer.Tick += (_, _) => UpdateAudio();
         _audioTimer.Start();
-        _lyrics.Changed += () => Dispatcher.InvokeAsync(PushLyrics);   // 歌词（抓取完成/换行）→ 刷新卡片
-        _volume.VolumeChanged += (level, muted) => Pill.ShowVolume(level, muted);   // 音量变化 → 胶囊显示音量条
         // 系统小组件：每秒采样一次 CPU / 内存（展开卡片显示）
         _systemMonitor.Changed += (cpu, mem) => Card.SetWidgets(cpu, mem, _systemMonitor.MemoryUsedGb, _systemMonitor.MemoryTotalGb);
         _widgetTimer.Tick += (_, _) => _systemMonitor.Poll();
@@ -142,13 +136,6 @@ public partial class MainWindow : Window
         }
         int n = _audio.CopyBands(_audioBands);
         Card.SetAudioLevel(n > 0 ? _audio.Level : 0f, _audioBands, _audio.IsActive);
-
-        // 音量指示：约每 120ms 轮询一次（40ms × 3）
-        if (++_volumePollTick >= 3)
-        {
-            _volumePollTick = 0;
-            _volume.Poll();
-        }
     }
 
     private async System.Threading.Tasks.Task InitializeWinRtServicesAsync()
@@ -228,8 +215,6 @@ public partial class MainWindow : Window
         _battery.Dispose();
         _foreground.Stop();
         _audio.Dispose();
-        _lyrics.Dispose();
-        _volume.Dispose();
     }
 
     // ---- 拖拽与点击 ----
@@ -314,15 +299,12 @@ public partial class MainWindow : Window
         int seq = ++_mediaSeq;   // 会话序号：用于丢弃旧会话迟到的封面
         bool hasMedia = info is not null && !string.IsNullOrWhiteSpace(info.Title);
         _mediaActive = hasMedia;
-        _mediaPlaying = hasMedia && info!.IsPlaying;
 
         if (!hasMedia)
         {
             Pill.SetMedia(null);
             Card.SetMedia(null);
             Card.SetNeon(false);
-            _lyrics.Clear();
-            Card.SetLyrics(null, null, null);
         }
         else
         {
@@ -334,12 +316,6 @@ public partial class MainWindow : Window
             Pill.SetMedia(text, null);
             Card.SetMedia(title, artist, null, info.IsPlaying);
             Card.SetNeon(info.IsPlaying);
-
-            // 歌词：按曲名/歌手抓取（有 SMTC 时间轴用真实位置，否则用本地时钟）
-            var progress = _media.GetProgress();
-            double duration = progress?.Duration ?? 0;
-            _lyrics.SetTrack(title, artist, duration, duration > 0);
-            PushLyrics();
 
             // 封面异步单独加载，拿到后再补上；若期间已切到别的媒体，丢弃旧封面
             var cover = await LoadCoverAsync(info.Thumbnail);
@@ -393,30 +369,14 @@ public partial class MainWindow : Window
             Pill.SetPowerState(charging);
         });
 
-    /// <summary>每 500ms 把媒体播放进度推给卡片（小米式时间轴），并同步歌词。</summary>
+    /// <summary>每 500ms 把媒体播放进度推给卡片（小米式时间轴）。</summary>
     private void UpdateProgress()
     {
         var p = _media.GetProgress();
         if (p is null)
-        {
             Card.SetProgress(null, null);
-            _lyrics.Clear();
-            Card.SetLyrics(null, null, null);
-        }
         else
-        {
             Card.SetProgress(p.Value.Position, p.Value.Duration);
-            // 有真实时间轴用真实位置，否则（如网易云）由歌词服务用本地时钟推算
-            _lyrics.Update(p.Value.Duration > 0 ? p.Value.Position : null, _mediaPlaying);
-            PushLyrics();
-        }
-    }
-
-    /// <summary>把当前歌词行推给卡片。</summary>
-    private void PushLyrics()
-    {
-        var s = _lyrics.Snapshot();
-        Card.SetLyrics(s.Current, s.Next, s.Translation);
     }
 
     /// <summary>新通知（WinRT 事件可能在非 UI 线程触发）：封送到 UI 线程，胶囊和卡片同步显示。</summary>
