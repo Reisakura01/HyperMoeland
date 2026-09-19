@@ -55,7 +55,10 @@ $projectPath = Join-Path $repositoryRoot 'Islora\Islora.csproj'
 $iconPath = Join-Path $repositoryRoot 'Islora\App.ico'
 $templatePath = Join-Path $storeDirectory 'AppxManifest.xml.template'
 
-if ([string]::IsNullOrWhiteSpace($StagingDirectory)) { $StagingDirectory = Join-Path $repositoryRoot 'artifacts\app' }
+# 注意：Store 包用的是自包含发布，与安装包（框架依赖）的产物不能混在同一个目录里——
+# 混放会出现 runtimeconfig.json 指向共享框架、而目录里又是自包含文件的四不像状态，
+# 应用启动会卡住且不报错。因此这里默认用独立的暂存目录。
+if ([string]::IsNullOrWhiteSpace($StagingDirectory)) { $StagingDirectory = Join-Path $repositoryRoot 'artifacts\app-store' }
 if ([string]::IsNullOrWhiteSpace($OutputDirectory))  { $OutputDirectory  = Join-Path $repositoryRoot 'artifacts\store' }
 
 function Find-SdkTool([string]$Name) {

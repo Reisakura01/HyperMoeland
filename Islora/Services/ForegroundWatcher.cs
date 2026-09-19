@@ -30,7 +30,13 @@ internal sealed class ForegroundWatcher
     private void Tick()
     {
         var fg = NativeMethods.GetForegroundWindow();
-        if (fg == IntPtr.Zero) return;
+        if (fg == IntPtr.Zero)
+        {
+            // 取不到前台窗口（切换瞬间/前台应用刚退出）：按"不全屏"处理，
+            // 否则一旦卡在全屏状态，岛就会永久隐藏、再也回不来。
+            SetFullscreen(false);
+            return;
+        }
 
         var monitor = NativeMethods.MonitorFromWindow(fg, NativeMethods.MONITOR_DEFAULTTONEAREST);
         if (monitor != _lastMonitor)
@@ -49,12 +55,15 @@ internal sealed class ForegroundWatcher
 
         // 真正全屏：覆盖屏幕 且 无标题栏（排除最大化普通窗口）——
         // 避免把最大化/贴边窗口误判为全屏导致岛"时有时无"。
-        bool fullscreen = coversScreen && NativeMethods.IsTrueFullscreen(fg);
+        // 另外排除了桌面/任务栏等系统外壳窗口：它们同样铺满整屏且无标题栏，
+        // 但不该被当成全屏应用（否则点一下桌面空白处岛就消失）。
+        SetFullscreen(coversScreen && NativeMethods.IsTrueFullscreen(fg));
+    }
 
-        if (fullscreen != _wasFullscreen)
-        {
-            _wasFullscreen = fullscreen;
-            FullscreenChanged?.Invoke(fullscreen);
-        }
+    private void SetFullscreen(bool fullscreen)
+    {
+        if (fullscreen == _wasFullscreen) return;
+        _wasFullscreen = fullscreen;
+        FullscreenChanged?.Invoke(fullscreen);
     }
 }

@@ -75,10 +75,84 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     private static extern bool IsZoomed(IntPtr hWnd);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDesktopWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     /// <summary>
-    /// 判断前台窗口是否为"真正免费的全屏"（如视频/游戏全屏、无边框独占窗口），
-    /// 排除"最大化的普通窗口"。最大化窗口仍带标题栏（WS_CAPTION）且 IsZoomed 为真，
-    /// 而真全屏通常是无标题栏（无 WS_CAPTION）且窗口覆盖整个屏幕。
+    /// 系统外壳（桌面、任务栏、开始菜单、任务视图等）的窗口类名。
+    /// 这些窗口同样"铺满整屏、无标题栏"，若不排除会被当成全屏应用，
+    /// 导致点一下桌面空白处岛就隐藏、且要再点任务栏才恢复。
+    /// </summary>
+    private static readonly string[] ShellWindowClasses =
+    {
+        "Progman",                          // 桌面（Program Manager）
+        "WorkerW",                          // 桌面壁纸层
+        "Shell_TrayWnd",                    // 任务栏
+        "Shell_SecondaryTrayWnd",           // 副屏任务栏
+        "SysListView32",                    // 桌面图标列表
+        "ApplicationManager_DesktopShellWindow",
+        "Windows.UI.Core.CoreWindow",       // 开始菜单 / 操作中心（部分版本）
+        "XamlExplorerHostIslandWindow",     // Win11 开始菜单 / 任务视图 / 小组件宿主
+        "MultitaskingViewFrame",            // 任务视图
+        "ForegroundStaging",                // 前台切换中的过渡窗口
+        "TaskListThumbnailWnd",             // 任务栏缩略图预览
+    };
+
+    /// <summary>取窗口类名；失败返回空串。</summary>
+    private static string GetWindowClassName(IntPtr hwnd)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder(256);
+            int n = GetClassName(hwnd, sb, sb.Capacity);
+            return n > 0 ? sb.ToString() : string.Empty;
+        }
+        catch { return string.Empty; }
+    }
+
+    /// <summary>该窗口是否为系统外壳窗口（桌面 / 任务栏 / 开始菜单等）。</summary>
+    private static bool IsShellWindow(IntPtr hwnd)
+    {
+        if (hwnd == GetShellWindow() || hwnd == GetDesktopWindow()) return true;
+
+        string cls = GetWindowClassName(hwnd);
+        foreach (var name in ShellWindowClasses)
+        {
+            if (string.Equals(cls, name, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+
+        // 兜底：外壳窗口属于 explorer.exe。普通窗口即使最大化也带标题栏，
+        // 已在下面被 WS_CAPTION 拦掉，因此这里排除 explorer 不会漏判真全屏场景。
+        try
+        {
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            if (pid != 0)
+            {
+                using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+                if (string.Equals(p.ProcessName, "explorer", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 判断前台窗口是否为"真正独占的全屏"（如视频/游戏全屏、无边框独占窗口），
+    /// 排除两类误判：
+    ///   1) 最大化的普通窗口 —— 仍带标题栏（WS_CAPTION）且 IsZoomed 为真；
+    ///   2) 系统外壳窗口（桌面 Progman/WorkerW、任务栏等）—— 同样铺满整屏且无标题栏，
+    ///      但显然不该被当作"全屏应用"而把岛隐藏起来。
     /// </summary>
     public static bool IsTrueFullscreen(IntPtr hwnd)
     {
@@ -88,6 +162,8 @@ internal static class NativeMethods
         // 带系统标题栏/可拖拽边框的普通窗口不计入
         int style = GetWindowLong(hwnd, GWL_STYLE);
         if ((style & WS_CAPTION) != 0) return false;
+        // 桌面 / 任务栏 / 开始菜单等外壳窗口不计入
+        if (IsShellWindow(hwnd)) return false;
         return true;
     }
 
