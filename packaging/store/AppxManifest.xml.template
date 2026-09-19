@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HyperMoeland 完整包（Full MSIX）清单模板 —— 用于 Microsoft Store 提交与本地测试安装。
+
+  与 packaging/identity/AppxManifest.xml.template（稀疏包）的区别：
+    * 应用文件真实打进包里（不再用 uap10:AllowExternalContent）
+    * 保留开始菜单入口（AppListEntry 为默认值，不再是 none），用户从开始菜单启动
+    * 入口点为 Windows.FullTrustApplication（桌面应用标准写法）
+    * 声明 userNotificationListener 能力（打包应用使用 UserNotificationListener 的前提）
+    * 增加 windows.startupTask 扩展：打包应用不能用 HKCU\Run 实现开机自启
+
+  占位符由 Build-StorePackage.ps1 替换：
+    {{PACKAGE_NAME}} / {{PUBLISHER}} / {{PUBLISHER_DISPLAY_NAME}} /
+    {{PACKAGE_VERSION}} / {{DISPLAY_NAME}} / {{DESCRIPTION}} / {{EXECUTABLE}}
+
+  ⚠️ 提交 Store 时，Identity 的 Name / Publisher 与 Properties 的 PublisherDisplayName
+     必须换成 Partner Center「产品标识」页给出的三个值，否则会被驳回。
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 rescap">
+
+  <Identity Name="{{PACKAGE_NAME}}"
+            Publisher="{{PUBLISHER}}"
+            Version="{{PACKAGE_VERSION}}"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Resources>
+    <Resource Language="zh-cn" />
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Dependencies>
+    <!-- 云母（Mica）等效果要求 Windows 11，因此最低版本定为 build 22000 -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <!-- 桌面应用（WPF）全信任运行 -->
+    <rescap:Capability Name="runFullTrust" />
+    <!-- 读取系统通知。注意：userNotificationListener 属于「受限能力」（rescap 命名空间），
+         写成 uap:Capability 会导致清单校验失败；
+         提交 Store 时该能力可能需要向微软说明用途并获得批准。 -->
+    <rescap:Capability Name="userNotificationListener" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="HyperMoeland"
+                 Executable="{{EXECUTABLE}}"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="{{DISPLAY_NAME}}"
+                          Description="{{DESCRIPTION}}"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"
+                         Square310x310Logo="Assets\Square310x310Logo.png"
+                         Square71x71Logo="Assets\Square71x71Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- 开机自启：默认关闭，由应用按设置调用 StartupTask.RequestEnableAsync() 打开，
+             用户也可在「任务管理器 → 启动」里自行管理 -->
+        <uap5:Extension Category="windows.startupTask"
+                        Executable="{{EXECUTABLE}}"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="HyperMoelandStartup"
+                            Enabled="false"
+                            DisplayName="{{DISPLAY_NAME}}" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

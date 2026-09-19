@@ -98,7 +98,8 @@ HyperMoeland/
 ├── .gitignore
 ├── packaging/
 │   ├── identity/                    # 稀疏包身份（MSIX）：证书/打包/注册/移除脚本
-│   └── installer/                   # Inno Setup 安装包：脚本 + 中文词条 + 一键构建
+│   ├── installer/                   # Inno Setup 安装包：脚本 + 中文词条 + 一键构建
+│   └── store/                       # 完整 MSIX 包：Store 提交与本地测试打包
 └── HyperMoeland/
     ├── HyperMoeland.csproj   # net10.0-windows10.0.26100.0 + UseWPF + UseWindowsForms
     ├── App.xaml(.cs)                # 入口 + 主题画刷默认值
@@ -122,6 +123,7 @@ HyperMoeland/
     ├── Services/
     │   ├── MediaService.cs          # SMTC 媒体会话（信息/控制/进度，含时间平滑外推）
     │   ├── NotificationService.cs   # 系统通知监听（事件订阅 / 轮询双模）+ 读取 Toast 正文
+    │   ├── PackageContext.cs        # 运行形态判定：无身份 / 稀疏包 / 完整包（Store）
     │   ├── AudioService.cs          # 1024 点 FFT → 6 频段频谱 + 音量包络
     │   ├── SystemMonitorService.cs  # CPU / 内存采样（小组件数据源）
     │   ├── BatteryService.cs        # 电量百分比

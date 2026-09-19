@@ -18,6 +18,10 @@ internal static class UpdateChecker
     /// <summary>查询 GitHub 最新版本；若比当前新则返回 (版本, 下载页 URL)，否则返回 null。</summary>
     public static async Task<(Version Version, string Url)?> CheckAsync()
     {
+        // Store 安装的版本由 Microsoft Store 负责更新：
+        // 商店政策不允许引导用户从商店外获取更新，直接跳过检查。
+        if (PackageContext.IsFullPackage) return null;
+
         try
         {
             using var http = new HttpClient();

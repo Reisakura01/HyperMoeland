@@ -1,0 +1,95 @@
+# HyperMoeland 完整 MSIX 包（Microsoft Store / 本地测试）
+
+把 `dotnet publish` 的产物打成**完整 MSIX 包**，用于：
+- 提交 Microsoft Store（Store 免费代为签名，并自动提供 CDN 与更新）
+- 本地安装、验证「打包形态」下的行为
+
+与 [`../identity`](../identity/README.md)（稀疏包）的区别：
+
+| | 稀疏包（identity） | 完整包（store） |
+|---|---|---|
+| 用途 | 给包**外**的 exe 授予包身份 | 真正分发（Store 提交 / 本地安装） |
+| 应用文件 | 不进包（`AllowExternalContent` 指向真实目录） | 打进包内 |
+| 开始菜单 | `AppListEntry="none"` | 有正常入口，从开始菜单启动 |
+| 开机自启 | HKCU `Run` 键 | 清单 `windows.startupTask` |
+| 签名 | 自签证书（需自行导入受信任人） | 提交用未签名包，Store 代签 |
+
+## 构建
+
+```powershell
+# 本地测试用（自签证书签名）
+pwsh -File packaging/store/Build-StorePackage.ps1
+
+# 提交 Store 用（未签名 + Partner Center 身份三件套）
+pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign `
+    -PackageName "12345Reisakura01.HyperMoeland" `
+    -Publisher "CN=1A2B3C4D-0000-0000-0000-000000000000" `
+    -PublisherDisplayName "MoeOrigin Team"
+
+# 自包含版（用户无需安装 .NET 运行时；需要能访问 nuget.org）
+pwsh -File packaging/store/Build-StorePackage.ps1 -SelfContained
+```
+
+产物在 `artifacts/store/`：`<包名>-<版本>.msix`，以及中间目录 `package/`（含生成的清单与图标）。
+
+## 本地安装 / 卸载
+
+```powershell
+# 安装（证书已在「受信任人」时无需管理员）
+pwsh -File packaging/store/Install-StorePackage.ps1
+
+# 卸载（只卸载 StoreTest 包，不会误删 identity 的稀疏包）
+pwsh -File packaging/store/Install-StorePackage.ps1 -Uninstall
+```
+
+> 自签证书要能安装，必须位于「本地计算机 → 受信任人」。首次需管理员执行：
+> `Import-Certificate -FilePath dist\identity\MoeOrigin.HyperMoeland.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`
+> （或直接跑 `packaging/identity/Install-Identity.ps1`，它会一并处理）
+
+## 清单声明了什么
+
+`AppxManifest.xml.template` 相对稀疏包清单的关键差异：
+
+| 声明 | 原因 |
+|---|---|
+| `EntryPoint="Windows.FullTrustApplication"` | WPF 桌面应用的标准入口点（稀疏包那份用的是 `uap10:RuntimeBehavior="win32App"`） |
+| `rescap:Capability Name="runFullTrust"` | 桌面应用全信任运行 |
+| `rescap:Capability Name="userNotificationListener"` | 读取系统通知。**必须写在 `rescap:` 命名空间**，写成 `uap:Capability` 会直接被清单校验拒绝 |
+| `uap5:Extension Category="windows.startupTask"` | 打包应用不能用 HKCU `Run` 实现开机自启 |
+| `TargetDeviceFamily MinVersion="10.0.22000.0"` | 云母（Mica）等效果要求 Windows 11 |
+| `ProcessorArchitecture="x64"` | 与发布 RID 一致（稀疏包用的是 `neutral`） |
+
+## 本地验证结论（1.3.0-beta.1）
+
+在 Windows 11（build 26100）上装包后从**开始菜单入口**启动，实测：
+
+| 项目 | 结果 |
+|---|---|
+| 包注册 | `MoeOrigin.HyperMoeland.StoreTest_1.3.0.1_x64__6c96f9ngvaz36`，安装到 `C:\Program Files\WindowsApps\...` |
+| 开始菜单 | 入口已注册（`Get-StartApps` 可见），AUMID 启动正常 |
+| 完整包识别 | `IsFullPackage=True`、`FamilyName` 正确、exe 路径落在 `InstalledLocation` 内 |
+| 通知能力 | `ok=True mode=event-subscription` —— 受限能力 `userNotificationListener` 生效，通知走官方事件订阅而非轮询 |
+| 开机自启 | `StartupTask State=Enabled`，由应用按设置调用 `RequestEnableAsync()` 打开 |
+| 设置读写 | 仍读写真实路径 `%LOCALAPPDATA%\HyperMoeland\settings.json`，**未被虚拟化**，用户既有设置直接沿用 |
+| 稳定性 | 进程持续存活，事件日志无崩溃记录 |
+
+由此确认：**不需要**在完整包里声明 `unvirtualizedResources`，设置存储路径无需改动。
+
+## 提交 Store 前还需要做的事
+
+1. **Partner Center 身份三件套**：建好应用后，把「产品标识」页的 `Package/Identity/Name`、
+   `Package/Identity/Publisher`、`PublisherDisplayName` 用 `-PackageName/-Publisher/-PublisherDisplayName`
+   传进来重新打包，否则会被驳回。
+2. **受限能力说明**：`userNotificationListener` 属受限能力，提交时需要在审核备注里说明用途
+   （HyperMoeland 用它把系统通知显示在岛的胶囊上，不落盘、不外传）。
+3. **截图**：至少 1 张，≥1366×768。仓库现有 `docs/preview.png`（920×500）与 `docs/pill.png`（464×92）**都不达标**，需要重拍整屏截图。
+4. **隐私政策 URL**：必填（读通知/媒体信息属个人信息范畴）。
+5. **年龄分级问卷**（IARC）、分类、系统要求、支持联系方式。
+6. **文案避免商标词**：listing 里不要出现 Apple「Dynamic Island」或小米「超级岛」等表述。
+7. **自包含包**：建议用 `-SelfContained` 出包，用户无需另装 .NET 10 桌面运行时（本地构建需要能访问 nuget.org，CI 可以）。
+
+## 已知限制
+
+- 包名默认是 `MoeOrigin.HyperMoeland.StoreTest`，与 `identity` 注册的稀疏包**可以共存**，但两者同时运行会出现两个岛；
+  日常使用建议只保留一种形态。
+- MSIX 卸载不会清理 `%LOCALAPPDATA%\HyperMoeland`（用户设置会保留，这是刻意的）。
