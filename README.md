@@ -59,7 +59,7 @@
 ### 方式一：下载安装包（推荐给普通用户）
 
 到 [Releases](https://github.com/Reisakura01/Islora/releases) 下载
-`Islora-1.3.0-beta.2-setup.exe`，双击安装即可：
+`Islora-1.3.0-beta.3-setup.exe`，双击安装即可：
 
 - 装到 `%LOCALAPPDATA%\Programs\Islora`，**每位用户安装，不需要管理员权限**
 - 安装界面支持**简体中文 / English**
