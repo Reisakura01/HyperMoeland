@@ -34,8 +34,60 @@ internal sealed class WasapiLoopbackCapture : IDisposable
         || hr == AUDCLNT_E_RESOURCES_INVALIDATED
         || hr == AUDCLNT_E_SERVICE_NOT_RUNNING;
 
+    /// <summary>
+    /// 判定混音格式的采样数据类型。
+    /// WAVE_FORMAT_EXTENSIBLE(0xFFFE) 要看 SubFormat GUID；
+    /// WAVE_FORMAT_IEEE_FLOAT(3) / WAVE_FORMAT_PCM(1) 看 wFormatTag。
+    /// </summary>
+    private static SampleFormat DetectSampleFormat(IntPtr pFormat, WAVEFORMATEX f)
+    {
+        ushort bits = f.wBitsPerSample;
+
+        if (f.wFormatTag == 0xFFFE && f.cbSize >= 22)
+        {
+            var ext = Marshal.PtrToStructure<WAVEFORMATEXTENSIBLE>(pFormat);
+            if (ext.SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+                return bits >= 32 ? SampleFormat.Float32 : SampleFormat.Unsupported;
+            if (ext.SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
+                return bits switch
+                {
+                    16 => SampleFormat.Pcm16,
+                    32 => SampleFormat.Pcm32Int,     // 24 位装在 32 位容器里也走这条（低 8 位补零）
+                    _ => SampleFormat.Unsupported,
+                };
+            return SampleFormat.Unsupported;
+        }
+
+        return f.wFormatTag switch
+        {
+            3 => bits >= 32 ? SampleFormat.Float32 : SampleFormat.Unsupported,   // IEEE float
+            1 => bits switch
+            {
+                16 => SampleFormat.Pcm16,
+                32 => SampleFormat.Pcm32Int,
+                _ => SampleFormat.Unsupported,
+            },
+            _ => SampleFormat.Unsupported,
+        };
+    }
+
     private static readonly Guid IID_IAudioClient = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
     private static readonly Guid IID_IAudioCaptureClient = new("C8ADBD64-E71E-48a0-A4DE-185C395CD317");
+
+    // WAVEFORMATEXTENSIBLE 的 SubFormat（决定采样数据到底是浮点还是整数）
+    private static readonly Guid KSDATAFORMAT_SUBTYPE_PCM = new("00000001-0000-0010-8000-00AA00389B71");
+    private static readonly Guid KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = new("00000003-0000-0010-8000-00AA00389B71");
+
+    /// <summary>混音格式的采样数据类型。</summary>
+    private enum SampleFormat
+    {
+        Unsupported = 0,
+        Float32,
+        Pcm16,
+        Pcm32Int,
+    }
+
+    private SampleFormat _sampleFormat = SampleFormat.Float32;
 
     private readonly object _lock = new();
     private Thread? _thread;
@@ -44,6 +96,10 @@ internal sealed class WasapiLoopbackCapture : IDisposable
     // 最近一次采集到的单声道样本（供分析线程读取）
     private float[] _mono = new float[0];
     private int _monoCount;
+
+    // 非 float 混音格式的临时缓冲（16 位 / 32 位整数 PCM）
+    private short[] _scratchS16 = new short[0];
+    private int[] _scratchS32 = new int[0];
 
     /// <summary>采样率（Hz）。</summary>
     public int SampleRate { get; private set; } = 48000;
@@ -185,9 +241,29 @@ internal sealed class WasapiLoopbackCapture : IDisposable
             const uint AUDCLNT_BUFFERFLAGS_SILENT = 0x2;
             if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0 && data != IntPtr.Zero && frames > 0)
             {
-                int total = (int)frames * Channels;
-                if (scratch.Length < total) scratch = new float[total];
-                Marshal.Copy(data, scratch, 0, total);
+                int sampleCount = (int)frames * Channels;
+                if (scratch.Length < sampleCount) scratch = new float[sampleCount];
+
+                // 按实际采样格式读取：元素个数必须与格式匹配，
+                // 否则会出现「按 4 字节读 2 字节缓冲区」的越界读取。
+                switch (_sampleFormat)
+                {
+                    case SampleFormat.Pcm16:
+                        if (_scratchS16.Length < sampleCount) _scratchS16 = new short[sampleCount];
+                        Marshal.Copy(data, _scratchS16, 0, sampleCount);
+                        for (int i = 0; i < sampleCount; i++) scratch[i] = _scratchS16[i] / 32768f;
+                        break;
+
+                    case SampleFormat.Pcm32Int:
+                        if (_scratchS32.Length < sampleCount) _scratchS32 = new int[sampleCount];
+                        Marshal.Copy(data, _scratchS32, 0, sampleCount);
+                        for (int i = 0; i < sampleCount; i++) scratch[i] = (float)(_scratchS32[i] / 2147483648.0);
+                        break;
+
+                    default:   // Float32
+                        Marshal.Copy(data, scratch, 0, sampleCount);
+                        break;
+                }
                 AppendDownmixed(scratch, (int)frames);
             }
 
@@ -263,6 +339,19 @@ internal sealed class WasapiLoopbackCapture : IDisposable
                 var format = Marshal.PtrToStructure<WAVEFORMATEX>(pFormat);
                 SampleRate = (int)format.nSamplesPerSec;
                 Channels = format.nChannels;
+
+                // 采样数据类型必须按设备实际混音格式解释：
+                // 原先一律当 32 位 float 处理，若设备是 16 位 PCM（部分蓝牙 A2DP / USB DAC），
+                // Marshal.Copy 会按 4 字节/样本去读只有 2 字节/样本的缓冲区 —— 越界读取，
+                // 轻则频谱失真，重则直接杀进程。
+                _sampleFormat = DetectSampleFormat(pFormat, format);
+                if (_sampleFormat == SampleFormat.Unsupported)
+                {
+                    LastError = $"不支持的混音格式：tag=0x{format.wFormatTag:X4} bits={format.wBitsPerSample} " +
+                                $"ch={format.nChannels} cbSize={format.cbSize}（仅支持 32 位浮点 / 16 位与 32 位整数 PCM）";
+                    Marshal.ReleaseComObject(client);
+                    return null;
+                }
 
                 // 注意：必须传**原始指针**（pFormat），不能传 WAVEFORMATEX 结构副本。
                 // 设备混音格式通常是 WAVEFORMATEXTENSIBLE（40 字节，cbSize=22），
@@ -363,5 +452,19 @@ internal sealed class WasapiLoopbackCapture : IDisposable
         public ushort nBlockAlign;
         public ushort wBitsPerSample;
         public ushort cbSize;
+    }
+
+    /// <summary>
+    /// WAVEFORMATEX 的扩展形式（设备混音格式几乎总是它，共 40 字节）。
+    /// 布局：基础结构(18) + wValidBitsPerSample(2) + dwChannelMask(4) + SubFormat GUID(16)。
+    /// 只有它才能区分「32 位浮点」与「32 位整数」——两者字节数一样，读法完全不同。
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Pack = 2)]
+    private struct WAVEFORMATEXTENSIBLE
+    {
+        public WAVEFORMATEX Format;
+        public ushort wValidBitsPerSample;
+        public uint dwChannelMask;
+        public Guid SubFormat;
     }
 }

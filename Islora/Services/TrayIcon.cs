@@ -49,8 +49,11 @@ internal sealed class TrayIcon : IDisposable
         };
         _autoStartItem.Click += (_, _) =>
         {
-            AutoStart.Set(!AutoStart.IsEnabled());
-            SettingsService.Current.AutoStart = AutoStart.IsEnabled();
+            // 以「当前实际状态」取反，而不是以菜单的勾选态为准——
+            // 打包版的自启状态是异步读回来的，菜单可能在缓存就绪前就建好了。
+            bool target = !AutoStart.IsEnabled();
+            AutoStart.Set(target);
+            SettingsService.Current.AutoStart = target;
             SettingsService.Save();
             _autoStartItem.Checked = AutoStart.IsEnabled();
         };
@@ -65,6 +68,11 @@ internal sealed class TrayIcon : IDisposable
         _exitItem = new ToolStripMenuItem { Padding = new Padding(10, 7, 10, 7) };
         _exitItem.Click += (_, _) => System.Windows.Application.Current.Shutdown();
         menu.Items.Add(_exitItem);
+
+        // 每次打开菜单时刷新自启勾选态：
+        // 打包（Store）版的自启状态来自异步的 StartupTask 查询，
+        // 构造菜单时缓存可能还没就绪，会导致「明明开着却显示没开」。
+        menu.Opening += (_, _) => _autoStartItem.Checked = AutoStart.IsEnabled();
 
         var icon = LoadAppIcon() ?? SystemIcons.Application;
 
@@ -106,13 +114,23 @@ internal sealed class TrayIcon : IDisposable
     /// <summary>托盘气泡显示"发现新版本"，点击打开下载页。</summary>
     public void ShowUpdate(string message, string url)
     {
+        // URL 存字段、点击时读最新值。
+        // 原来是把 url 直接捕获进「只挂一次」的点击处理器里，
+        // 于是先弹的「通知权限提示」（url 为空）会把处理器钉死在空串上，
+        // 之后的「发现新版本」气泡点了毫无反应。
+        _balloonUrl = url;
         _icon.ShowBalloonTip(8000, LocalizationService.T("Tray.Tooltip"), message, ToolTipIcon.Info);
         if (!_updateConnected)
         {
             _updateConnected = true;
-            _icon.BalloonTipClicked += (_, _) => OpenUrl(url);
+            _icon.BalloonTipClicked += (_, _) =>
+            {
+                if (!string.IsNullOrEmpty(_balloonUrl)) OpenUrl(_balloonUrl);
+            };
         }
     }
+
+    private string _balloonUrl = string.Empty;
 
     private static void OpenUrl(string url)
     {
@@ -163,6 +181,9 @@ internal sealed class TrayIcon : IDisposable
 
     public void Dispose()
     {
+        // 静态事件必须退订：LocalizationService.LanguageChanged 是 static，
+        // 不退订会把本对象（及其持有的 NotifyIcon）永久 root 住。
+        LocalizationService.LanguageChanged -= ApplyLanguage;
         _icon.Visible = false;
         _icon.Dispose();
     }

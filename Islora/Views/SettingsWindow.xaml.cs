@@ -9,6 +9,12 @@ namespace Islora.Views;
 /// <summary>设置窗口：主题模式 / 日夜间 / 自启 / 自动更新 / 语言。</summary>
 public partial class SettingsWindow : Window
 {
+    /// <summary>窗口打开时的语言（用于「未保存就关闭」时回滚预览）。</summary>
+    private readonly AppLanguage _languageOnOpen = SettingsService.Current.Language;
+
+    /// <summary>是否已通过「保存」正常关闭。</summary>
+    private bool _saved;
+
     public SettingsWindow()
     {
         InitializeComponent();
@@ -21,6 +27,14 @@ public partial class SettingsWindow : Window
                 ? AppLanguage.English
                 : AppLanguage.Chinese);
             ApplyLanguage();
+        };
+
+        // 用标题栏 × 关闭（或 Esc）时 ShowDialog 返回 null，
+        // 既不走 OnSave 也不走 OnCancel —— 原来会让界面停在预览语言上，
+        // 而设置里存的还是旧语言，重开设置就出现「下拉框显示中文、界面却是英文」的矛盾状态。
+        Closing += (_, _) =>
+        {
+            if (!_saved) LocalizationService.SetLanguage(_languageOnOpen);
         };
     }
 
@@ -96,6 +110,7 @@ public partial class SettingsWindow : Window
         s.Language = LanguageBox.SelectedIndex == 1 ? AppLanguage.English : AppLanguage.Chinese;
 
         SettingsService.Save();
+        _saved = true;
         DialogResult = true;
         Close();
     }

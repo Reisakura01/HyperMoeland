@@ -417,8 +417,16 @@ public partial class ExpandedCard : UserControl
     private void OnLikeClicked(object sender, RoutedEventArgs e)
     {
         _liked = !_liked;
-        LikeIcon.Fill = _liked
-            ? (Brush)FindResource("Theme.Foreground")
-            : new SolidColorBrush(Color.FromArgb(0x80, 0x80, 0x80, 0x80));
+        if (_liked)
+        {
+            // 必须用资源**引用**而不是 FindResource 取到的画刷实例：
+            // ThemeManager.Apply 每次都是替换画刷对象，快照下来的实例不会跟着主题变，
+            // 夜间点亮的心形到白天会变成浅色卡片上的白心形（几乎看不见）。
+            LikeIcon.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, "Theme.Foreground");
+        }
+        else
+        {
+            LikeIcon.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0x80, 0x80, 0x80));
+        }
     }
 }

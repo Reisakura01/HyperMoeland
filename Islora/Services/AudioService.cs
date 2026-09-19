@@ -22,10 +22,38 @@ internal sealed class AudioService : IDisposable
     private const float AdaptiveFloor = 0.005f;
     private const float ActiveThreshold = 0.002f;   // 判定"有声音"的峰值阈值
 
-    private static readonly (int Start, int End)[] BandRanges =
+    /// <summary>
+    /// 频段边界（Hz）。用频率而不是写死的 bin 下标——
+    /// bin 下标隐含了「1024 点 @48kHz」，一旦输出设备是 96kHz/44.1kHz，
+    /// 频段会整体错位（低音段跑到中频、最高段恒黑）。
+    /// 边界取自原先按 48kHz 标定的 bin 区间（bin≈46.9Hz）换算成的频率。
+    /// </summary>
+    private static readonly (double Lo, double Hi)[] BandHz =
     {
-        (2, 8), (8, 20), (20, 50), (50, 120), (120, 280), (280, 511),
+        (90, 375), (375, 940), (940, 2350), (2350, 5600), (5600, 13000), (13000, 24000),
     };
+
+    /// <summary>按当前采样率换算出的 bin 区间；采样率变化时重算。</summary>
+    private (int Start, int End)[] _bandBins = new (int, int)[BandCount];
+    private int _bandBinsRate;
+
+    /// <summary>按采样率把频段频率边界换算成 bin 下标（bin = f * N / rate）。</summary>
+    private void EnsureBandBins(int sampleRate)
+    {
+        if (sampleRate <= 0) sampleRate = 48000;
+        if (_bandBinsRate == sampleRate) return;
+
+        int maxBin = FftLength / 2;
+        for (int b = 0; b < BandCount; b++)
+        {
+            int start = (int)Math.Round(BandHz[b].Lo * FftLength / sampleRate);
+            int end = (int)Math.Round(BandHz[b].Hi * FftLength / sampleRate);
+            if (start < 1) start = 1;
+            if (end > maxBin) end = maxBin;
+            _bandBins[b] = (start, end);
+        }
+        _bandBinsRate = sampleRate;
+    }
 
     private readonly WasapiLoopbackCapture _capture = new();
     private readonly float[] _bands = new float[BandCount];
@@ -162,7 +190,8 @@ internal sealed class AudioService : IDisposable
         {
             for (int b = 0; b < BandCount; b++)
             {
-                var (start, end) = BandRanges[b];
+                EnsureBandBins(_sampleRate);
+                var (start, end) = _bandBins[b];
                 if (end > bins) end = bins;
                 if (start >= end) { _bands[b] = 0f; continue; }
 

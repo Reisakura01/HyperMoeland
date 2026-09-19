@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   Islora 稀疏包（Sparse Package）清单模板。
   作用：为「包外」的 Islora.exe 授予 Windows 包身份（Package Identity），

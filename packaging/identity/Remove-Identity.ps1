@@ -50,11 +50,31 @@ foreach ($name in $names) {
 }
 
 if ($RemoveCertificate) {
-    $certs = Get-ChildItem 'Cert:\LocalMachine\TrustedPeople' -ErrorAction SilentlyContinue |
-        Where-Object { $_.Subject -eq 'CN=MoeOrigin Team' }
-    foreach ($cert in $certs) {
-        Write-Host "移除受信任证书：$($cert.Thumbprint)"
-        Remove-Item -Path $cert.PSPath -Force
+    # 只删「本次安装所用证书」——即随包产出的 .cer（其指纹就是签名用的那张）。
+    # 原来按 Subject 全库扫描删除，会把 stable / dev / store 自签测试包共用的信任证书
+    # 一起删掉，导致原有包再也无法安装或更新（-Channel 对证书毫无过滤作用）。
+    $cerCandidates = @(
+        (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path "dist\identity\$packageName.cer"),
+        (Join-Path $PSScriptRoot "build\$packageName.cer")
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    $thumbprints = @()
+    if ($cerCandidates) {
+        $thumbprints = @((Get-PfxCertificate -FilePath $cerCandidates -ErrorAction SilentlyContinue).Thumbprint |
+            Where-Object { $_ })
+    }
+
+    if ($thumbprints.Count -eq 0) {
+        Write-Host "找不到本次安装的证书文件（$packageName.cer），跳过证书删除。" -ForegroundColor Yellow
+        Write-Host "如确需清理，请手动确认指纹后删除，避免误删其它包所依赖的信任证书。" -ForegroundColor Yellow
+    }
+    foreach ($tp in $thumbprints) {
+        $cert = Get-ChildItem 'Cert:\LocalMachine\TrustedPeople' -ErrorAction SilentlyContinue |
+            Where-Object { $_.Thumbprint -eq $tp }
+        if ($cert) {
+            Write-Host "移除受信任证书：$tp"
+            Remove-Item -Path $cert.PSPath -Force
+        }
     }
 }
 

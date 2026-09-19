@@ -42,11 +42,26 @@ internal sealed class BatteryService : IDisposable
         }
     }
 
-    /// <summary>根据电源供给状态判断是否插电，并在变化时派发事件。</summary>
+    /// <summary>
+    /// 根据电源供给状态判断是否插电，并在变化时派发事件。
+    ///
+    /// 注意先确认设备**真的有电池**：PowerSupplyStatus.Adequate 的含义是
+    /// 「接了交流电、供电充足」，台式机/一体机没有电池时它同样是 Adequate，
+    /// 于是会常驻显示充电闪电（而电量永远是「--」）。
+    /// </summary>
     private void UpdateCharging()
     {
-        var status = PowerManager.PowerSupplyStatus;
-        bool charging = status == PowerSupplyStatus.Adequate;
+        bool hasBattery;
+        try
+        {
+            var report = Battery.AggregateBattery.GetReport();
+            // 无电池设备会返回 NotPresent / 容量为 0
+            hasBattery = report.Status != Windows.System.Power.BatteryStatus.NotPresent
+                         && (report.FullChargeCapacityInMilliwattHours ?? 0) > 0;
+        }
+        catch { hasBattery = false; }
+
+        bool charging = hasBattery && PowerManager.PowerSupplyStatus == PowerSupplyStatus.Adequate;
         if (charging != _isCharging)
         {
             _isCharging = charging;

@@ -20,7 +20,7 @@ namespace Islora.Services;
 internal sealed class NotificationService : IDisposable
 {
     private UserNotificationListener? _listener;
-    private readonly HashSet<uint> _seenIds = new();
+    private HashSet<uint> _seenIds = new();
     private bool _subscribed;
 
     /// <summary>新通知（参数为展示文本，如 "📩 微信 · 张三：在吗"）。</summary>
@@ -96,12 +96,18 @@ internal sealed class NotificationService : IDisposable
         try
         {
             var notifs = await _listener.GetNotificationsAsync(NotificationKinds.Toast);
+
+            // 用「本轮实际存在的 ID 集合」替换旧集合：
+            // 原来只 Add 不 Remove，集合只增不减；一旦系统回收并复用了某个已消失通知的 ID，
+            // 新通知会被误判成「见过」而静默吞掉。
+            var currentIds = new HashSet<uint>();
             foreach (var n in notifs)
             {
                 // 每条独立 try/catch：某些通知的 AppInfo 访问会抛 NotImplementedException，
                 // 不能让它中断整轮遍历。
                 try
                 {
+                    currentIds.Add(n.Id);
                     if (_seenIds.Add(n.Id))
                         NotificationAdded?.Invoke(BuildDisplay(n));
                 }
@@ -110,6 +116,7 @@ internal sealed class NotificationService : IDisposable
                     // 跳过无法读取的通知
                 }
             }
+            _seenIds = currentIds;
         }
         catch
         {

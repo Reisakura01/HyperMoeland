@@ -81,12 +81,15 @@ Export-IconPng $iconPath 150 (Join-Path $assetsDirectory 'Square150x150Logo.png'
 Export-IconPng $iconPath 50  (Join-Path $assetsDirectory 'StoreLogo.png')
 
 # ---- 生成清单 ----
-$manifest = Get-Content -Raw (Join-Path $PSScriptRoot 'AppxManifest.xml.template')
+# 必须显式指定编码：模板含中文注释且没有 BOM，
+# Windows PowerShell 5.1 下 Get-Content 不指定编码会按系统 ANSI 代码页解码 → 生成物中文乱码。
+$manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $PSScriptRoot 'AppxManifest.xml.template')
 $manifest = $manifest.Replace('{{PACKAGE_NAME}}', $identity.Name)
 $manifest = $manifest.Replace('{{PUBLISHER}}', $publisher)
 $manifest = $manifest.Replace('{{PACKAGE_VERSION}}', $Version)
 $manifest = $manifest.Replace('{{DISPLAY_NAME}}', $identity.DisplayName)
-Set-Content -Path $manifestPath -Value $manifest -Encoding utf8
+# 同样显式写 UTF-8 with BOM（PowerShell 5.1 的 -Encoding utf8 就是带 BOM 的 UTF-8）
+[System.IO.File]::WriteAllText($manifestPath, $manifest, (New-Object System.Text.UTF8Encoding($true)))
 
 # ---- 打包 + 签名 ----
 $makeAppx = Get-SdkTool 'MakeAppx.exe'
