@@ -9,12 +9,13 @@
     * 声明 userNotificationListener 能力（打包应用使用 UserNotificationListener 的前提）
     * 增加 windows.startupTask 扩展：打包应用不能用 HKCU\Run 实现开机自启
 
-  占位符由 Build-StorePackage.ps1 替换：
-    {{PACKAGE_NAME}} / {{PUBLISHER}} / {{PUBLISHER_DISPLAY_NAME}} /
-    {{PACKAGE_VERSION}} / {{DISPLAY_NAME}} / {{DESCRIPTION}} / {{EXECUTABLE}}
+  占位符由 Build-StorePackage.ps1 替换（下面是占位符名，不是值）：
+    PACKAGE_NAME / PUBLISHER / PUBLISHER_DISPLAY_NAME /
+    PACKAGE_VERSION / DISPLAY_NAME / DESCRIPTION / EXECUTABLE
 
   ⚠️ 提交 Store 时，Identity 的 Name / Publisher 与 Properties 的 PublisherDisplayName
      必须换成 Partner Center「产品标识」页给出的三个值，否则会被驳回。
+     本项目的这三个值记在 README.md 的「Store 身份」一节。
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"

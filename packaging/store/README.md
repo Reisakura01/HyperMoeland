@@ -14,6 +14,32 @@
 | 开机自启 | HKCU `Run` 键 | 清单 `windows.startupTask` |
 | 签名 | 自签证书（需自行导入受信任人） | 提交用未签名包，Store 代签 |
 
+## Store 身份
+
+Partner Center「产品管理 → 产品标识」给出的三个值（本项目的实际取值）：
+
+| 清单节点 | 值 |
+|---|---|
+| `Package/Identity/Name` → `<Identity Name>` | `Reisakura.HyperMoeland` |
+| `Package/Identity/Publisher` → `<Identity Publisher>` | `CN=0070A02F-1245-460C-935F-426185146220` |
+| `Package/Properties/PublisherDisplayName` | `Reisakura` |
+
+由 Name + Publisher 推导的**包系列名**（按 `Name_ + Base32(SHA256(UTF16LE(Publisher)))[0..12]` 计算，
+已用 `CN=MoeOrigin Team → 6c96f9ngvaz36` 与实装包核对过算法）：
+
+```
+Reisakura.HyperMoeland_5250pqc4cqtpj
+```
+
+提交包一条命令（自包含 + 未签名，Store 会代为签名）：
+
+```powershell
+pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -SelfContained `
+    -PackageName "Reisakura.HyperMoeland" `
+    -Publisher "CN=0070A02F-1245-460C-935F-426185146220" `
+    -PublisherDisplayName "Reisakura"
+```
+
 ## 构建
 
 ```powershell
@@ -45,6 +71,26 @@ pwsh -File packaging/store/Install-StorePackage.ps1 -Uninstall
 > 自签证书要能安装，必须位于「本地计算机 → 受信任人」。首次需管理员执行：
 > `Import-Certificate -FilePath dist\identity\MoeOrigin.HyperMoeland.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`
 > （或直接跑 `packaging/identity/Install-Identity.ps1`，它会一并处理）
+
+> ⚠️ 要用 **Store 身份**（`CN=0070A02F-…`）的包本地安装，签名证书的 Subject 必须与清单里的
+> Publisher 完全一致，即需要一张 `CN=0070A02F-1245-460C-935F-426185146220` 的自签证书并导入
+> 受信任人（需管理员）。现有的 `CN=MoeOrigin Team` 证书签不了这个包。
+
+## 版本号与 Store 提交
+
+清单版本号由应用版本里的数字段拼成四段式：
+
+| 应用版本 | 清单版本 |
+|---|---|
+| `1.3.0-beta.1` | `1.3.0.1` |
+| `1.3.0` | `1.3.0.0` |
+| `1.3.1` | `1.3.1.0` |
+
+Store 要求**每次提交的包版本必须大于上一次**。注意上表第二行：稳定版 `1.3.0` 映射出的
+`1.3.0.0` **低于** `1.3.0-beta.1` 的 `1.3.0.1`。因此：
+
+- 不要「先提交某版本的 beta，再提交同版本的稳定版」——后者会被 Store 以版本过低拒绝；
+- 正确做法是**改应用版本号**：已经提交过 `1.3.0-beta.1`，下一次提交就用 `1.3.1`（→ `1.3.1.0`）。
 
 ## 清单声明了什么
 
