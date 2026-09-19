@@ -7,9 +7,9 @@ $ErrorActionPreference = 'Stop'
 
 # 发布者名称必须与 AppxManifest.xml.template 里的 Publisher 完全一致
 $subject = 'CN=MoeOrigin Team'
-$friendlyName = 'HyperMoeland Development Package Signing'
-$pfxPassword = 'HyperMoelandDevelopment'
-$pfxName = 'HyperMoeland.Dev.pfx'
+$friendlyName = 'Islora Development Package Signing'
+$pfxPassword = 'IsloraDevelopment'
+$pfxName = 'Islora.Dev.pfx'
 
 New-Item -ItemType Directory -Force -Path $CertificateDirectory | Out-Null
 

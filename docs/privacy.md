@@ -1,6 +1,6 @@
 # 隐私政策 · Privacy Policy
 
-**HyperMoeland**（Windows 11 桌面应用）· 最后更新：2026-09-19
+**Islora**（Windows 11 桌面应用）· 最后更新：2026-09-19
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### 一句话概括
 
-HyperMoeland 是一个**完全在本机运行**的桌面小工具。它**不收集、不存储、不上传**任何个人信息，
+Islora 是一个**完全在本机运行**的桌面小工具。它**不收集、不存储、不上传**任何个人信息，
 没有账号体系，没有遥测、统计分析或广告，也不包含任何第三方 SDK。
 
 ### 应用会读取哪些信息，用途是什么
@@ -19,7 +19,7 @@ HyperMoeland 是一个**完全在本机运行**的桌面小工具。它**不收�
 | **媒体会话信息**（曲名、歌手、专辑封面、播放状态） | 在岛上显示当前播放内容，并提供上一首/播放暂停/下一首控制 | 否 |
 | **系统音频输出**（WASAPI 环回采集） | 实时计算频谱，驱动岛上的频谱条与霓虹亮度 | 否。**不录音、不保存、不传输**，数据仅在内存中用于逐帧计算 |
 | **硬件状态**（CPU 占用率、物理内存占用率、电池电量） | 在展开卡片上显示系统小组件与电量 | 否 |
-| **应用设置**（主题、语言、开机自启、动画速度等） | 记住你的偏好 | 否。保存在本机 `%LOCALAPPDATA%\HyperMoeland\settings.json` |
+| **应用设置**（主题、语言、开机自启、动画速度等） | 记住你的偏好 | 否。保存在本机 `%LOCALAPPDATA%\Islora\settings.json` |
 
 ### 通知访问权限
 
@@ -43,7 +43,7 @@ HyperMoeland 是一个**完全在本机运行**的桌面小工具。它**不收�
 
 - 应用运行期间的信息（通知、媒体信息、音频采样）**只在内存中短暂存在**，不落盘。
 - 唯一的持久化数据是上表的「应用设置」。
-- 想彻底清除：删除 `%LOCALAPPDATA%\HyperMoeland` 文件夹即可；卸载应用不会自动删除它（这是为了让你重装后保留偏好），你可以手动删除。
+- 想彻底清除：删除 `%LOCALAPPDATA%\Islora` 文件夹即可；卸载应用不会自动删除它（这是为了让你重装后保留偏好），你可以手动删除。
 
 ### 儿童隐私
 
@@ -57,7 +57,7 @@ HyperMoeland 是一个**完全在本机运行**的桌面小工具。它**不收�
 
 有任何隐私相关问题，请通过以下方式联系：
 
-- GitHub Issues：<https://github.com/Reisakura01/HyperMoeland/issues>
+- GitHub Issues：<https://github.com/Reisakura01/Islora/issues>
 - 电子邮件：zx138913@gmail.com
 
 ---
@@ -66,7 +66,7 @@ HyperMoeland 是一个**完全在本机运行**的桌面小工具。它**不收�
 
 ### Summary
 
-HyperMoeland is a desktop widget that runs **entirely on your device**. It collects **no** personal
+Islora is a desktop widget that runs **entirely on your device**. It collects **no** personal
 data, has no accounts, no telemetry, no analytics, no ads, and bundles no third-party SDKs.
 
 ### What the app reads, and why
@@ -77,7 +77,7 @@ data, has no accounts, no telemetry, no analytics, no ads, and bundles no third-
 | **Media session info** (title, artist, artwork, playback state) | Show what's playing and provide playback controls | No |
 | **System audio output** (WASAPI loopback) | Compute a live spectrum for the visualization | No. **Not recorded, not stored, not transmitted** — processed in memory, frame by frame |
 | **Hardware status** (CPU load, memory load, battery level) | Show the system widgets and battery indicator | No |
-| **App settings** (theme, language, autostart, animation speed) | Remember your preferences | No — stored locally in `%LOCALAPPDATA%\HyperMoeland\settings.json` |
+| **App settings** (theme, language, autostart, animation speed) | Remember your preferences | No — stored locally in `%LOCALAPPDATA%\Islora\settings.json` |
 
 ### Notification access
 
@@ -105,7 +105,7 @@ components.
 
 - Runtime data (notifications, media info, audio samples) exists **only in memory** and is never persisted.
 - The only persisted data is the app settings listed above.
-- To erase everything, delete the `%LOCALAPPDATA%\HyperMoeland` folder. Uninstalling does not remove
+- To erase everything, delete the `%LOCALAPPDATA%\Islora` folder. Uninstalling does not remove
   it automatically (so your preferences survive a reinstall) — you may delete it manually.
 
 ### Children's privacy
@@ -118,5 +118,5 @@ Any change to this policy will be reflected in this document and on this page.
 
 ### Contact
 
-- GitHub Issues: <https://github.com/Reisakura01/HyperMoeland/issues>
+- GitHub Issues: <https://github.com/Reisakura01/Islora/issues>
 - Email: zx138913@gmail.com

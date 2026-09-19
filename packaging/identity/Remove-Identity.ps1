@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  卸载 HyperMoeland 的稀疏包身份注册。
+  卸载 Islora 的稀疏包身份注册。
 
 .DESCRIPTION
   移除包注册；可选（-RemoveCertificate）同时从「本地计算机 → 受信任人」
@@ -36,9 +36,9 @@ if (-not (Test-IsElevated)) {
 }
 
 $names = switch ($Channel) {
-    'dev'    { @('MoeOrigin.HyperMoeland.Dev') }
-    'stable' { @('MoeOrigin.HyperMoeland') }
-    default  { @('MoeOrigin.HyperMoeland', 'MoeOrigin.HyperMoeland.Dev') }
+    'dev'    { @('MoeOrigin.Islora.Dev') }
+    'stable' { @('MoeOrigin.Islora') }
+    default  { @('MoeOrigin.Islora', 'MoeOrigin.Islora.Dev') }
 }
 
 foreach ($name in $names) {

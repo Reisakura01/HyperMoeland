@@ -1,4 +1,4 @@
-﻿; *** HyperMoeland 简体中文词条（由 Inno Setup 6 自带 Default.isl 衍生）***
+﻿; *** Islora 简体中文词条（由 Inno Setup 6 自带 Default.isl 衍生）***
 ;
 ; 只翻译了安装/卸载流程中会看到的词条，未列出的条目沿用英文原文。
 ; 如需补充词条：直接在本文件中添加/修改 键=值 即可（键名必须与 Default.isl 一致）。

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HyperMoeland 稀疏包（Sparse Package）清单模板。
-  作用：为「包外」的 HyperMoeland.exe 授予 Windows 包身份（Package Identity），
+  Islora 稀疏包（Sparse Package）清单模板。
+  作用：为「包外」的 Islora.exe 授予 Windows 包身份（Package Identity），
         从而解锁需要身份的 WinRT 能力——最典型的是 UserNotificationListener
         的事件订阅（无身份时会报 0x80070490 ERROR_NOT_FOUND）。
 
@@ -45,13 +45,13 @@
   </Capabilities>
 
   <Applications>
-    <Application Id="HyperMoeland"
-                 Executable="HyperMoeland.exe"
+    <Application Id="Islora"
+                 Executable="Islora.exe"
                  uap10:TrustLevel="mediumIL"
                  uap10:RuntimeBehavior="win32App">
       <uap:VisualElements AppListEntry="none"
                           DisplayName="{{DISPLAY_NAME}}"
-                          Description="Dynamic Island for Windows"
+                          Description="A capsule-style status island for Windows 11"
                           BackgroundColor="transparent"
                           Square150x150Logo="assets\Square150x150Logo.png"
                           Square44x44Logo="assets\Square44x44Logo.png" />

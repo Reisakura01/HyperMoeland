@@ -1,7 +1,7 @@
-# HyperMoeland
+# Islora
 
-> **Hyper 灵动岛** —— Windows 11 上的 iOS 风格 Dynamic Island（灵动岛）实现。
-> 顶部居中的深/浅胶囊常驻显示，点击展开成卡片，自动跟随系统媒体、通知、电量。
+> **Islora** —— Windows 11 顶部常驻的胶囊式状态岛。
+> 空闲时是一枚胶囊，点击展开成卡片，自动跟随系统媒体、通知、电量与硬件状态。
 
 用 **.NET 10 / WPF** 实现，不依赖 WinUI，API 稳定、好维护。
 
@@ -58,10 +58,10 @@
 
 ### 方式一：下载安装包（推荐给普通用户）
 
-到 [Releases](https://github.com/Reisakura01/HyperMoeland/releases) 下载
-`HyperMoeland-1.3.0-beta.1-setup.exe`，双击安装即可：
+到 [Releases](https://github.com/Reisakura01/Islora/releases) 下载
+`Islora-1.3.0-beta.1-setup.exe`，双击安装即可：
 
-- 装到 `%LOCALAPPDATA%\Programs\HyperMoeland`，**每位用户安装，不需要管理员权限**
+- 装到 `%LOCALAPPDATA%\Programs\Islora`，**每位用户安装，不需要管理员权限**
 - 安装界面支持**简体中文 / English**
 - 安装前会检查 .NET 10 桌面运行时（缺失时给出下载地址）
 - 卸载走「设置 → 应用」，会一并清理快捷方式与安装目录
@@ -69,14 +69,14 @@
 ### 方式二：从源码编译
 
 1. 安装 **VS2026 Community**（或 VS2022+），勾选 **.NET 10 SDK** 与 **Windows SDK 10.0.26100**；
-2. 用 VS 打开 `HyperMoeland.sln`；
+2. 用 VS 打开 `Islora.sln`；
 3. **Ctrl+Shift+B** 编译，或直接 **F5** 运行。
 
 命令行发布 / 打包安装程序：
 
 ```powershell
 # 发布（框架依赖）
-dotnet publish HyperMoeland/HyperMoeland.csproj -c Release -o dist
+dotnet publish Islora/Islora.csproj -c Release -o dist
 
 # 打 Inno Setup 安装包（需先装 Inno Setup 6）
 pwsh -File packaging/installer/Build-Installer.ps1
@@ -91,8 +91,8 @@ pwsh -File packaging/installer/Build-Installer.ps1
 ## 🏗️ 项目结构
 
 ```
-HyperMoeland/
-├── HyperMoeland.sln
+Islora/
+├── Islora.sln
 ├── README.md
 ├── 项目目录.md
 ├── .gitignore
@@ -100,8 +100,8 @@ HyperMoeland/
 │   ├── identity/                    # 稀疏包身份（MSIX）：证书/打包/注册/移除脚本
 │   ├── installer/                   # Inno Setup 安装包：脚本 + 中文词条 + 一键构建
 │   └── store/                       # 完整 MSIX 包：Store 提交与本地测试打包
-└── HyperMoeland/
-    ├── HyperMoeland.csproj   # net10.0-windows10.0.26100.0 + UseWPF + UseWindowsForms
+└── Islora/
+    ├── Islora.csproj   # net10.0-windows10.0.26100.0 + UseWPF + UseWindowsForms
     ├── App.xaml(.cs)                # 入口 + 主题画刷默认值
     ├── MainWindow.xaml(.cs)         # 岛窗口：透明置顶 + 动画 + 所有服务接线
     ├── Core/

@@ -1,18 +1,18 @@
 ﻿<#
 .SYNOPSIS
-  一键构建 HyperMoeland 的 Inno Setup 安装包。
+  一键构建 Islora 的 Inno Setup 安装包。
 
 .DESCRIPTION
   流程：
     1. dotnet publish 发布应用（框架依赖，输出到 artifacts\app）
-    2. 从 HyperMoeland.csproj 读取版本号
+    2. 从 Islora.csproj 读取版本号
     3. 调用 Inno Setup 编译器 ISCC.exe 生成安装包到 artifacts\
 
   自动查找 ISCC.exe（注册表 → 常见安装路径 → PATH）。
   未安装 Inno Setup 时会给出安装提示并退出。
 
 .PARAMETER Version
-  安装包版本号，默认取 HyperMoeland.csproj 里的 <Version>。
+  安装包版本号，默认取 Islora.csproj 里的 <Version>。
 
 .PARAMETER StagingDirectory
   publish 输出目录，默认 <仓库>\artifacts\app。
@@ -50,8 +50,8 @@ function Write-Step([string]$Text) {
 # ---- 路径 ----
 $installerDirectory = $PSScriptRoot
 $repositoryRoot = Split-Path (Split-Path $installerDirectory -Parent) -Parent
-$projectPath = Join-Path $repositoryRoot 'HyperMoeland\HyperMoeland.csproj'
-$scriptPath = Join-Path $installerDirectory 'HyperMoeland.iss'
+$projectPath = Join-Path $repositoryRoot 'Islora\Islora.csproj'
+$scriptPath = Join-Path $installerDirectory 'Islora.iss'
 
 if (-not (Test-Path $projectPath)) { throw "找不到项目文件：$projectPath" }
 if (-not (Test-Path $scriptPath)) { throw "找不到 Inno 脚本：$scriptPath" }
@@ -75,7 +75,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 $numeric = ([regex]::Matches($Version, '\d+') | ForEach-Object { $_.Value }) -join '.'
 while (($numeric -split '\.').Count -lt 4) { $numeric += '.0' }
 
-Write-Step 'HyperMoeland 安装包构建'
+Write-Step 'Islora 安装包构建'
 Write-Host "版本号    : $Version  (VersionInfoVersion=$numeric)"
 Write-Host "暂存目录  : $StagingDirectory"
 Write-Host "产物目录  : $OutputDirectory"
@@ -96,8 +96,8 @@ if (-not $SkipPublish) {
     if (Test-Path $identityJunk) { Remove-Item $identityJunk -Recurse -Force }
 }
 
-$exePath = Join-Path $StagingDirectory 'HyperMoeland.exe'
-if (-not (Test-Path $exePath)) { throw "暂存目录里没有 HyperMoeland.exe：$StagingDirectory" }
+$exePath = Join-Path $StagingDirectory 'Islora.exe'
+if (-not (Test-Path $exePath)) { throw "暂存目录里没有 Islora.exe：$StagingDirectory" }
 
 # ---- 查找 ISCC ----
 Write-Step '查找 Inno Setup 编译器'
@@ -138,7 +138,7 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
     "/DStagingDir=$StagingDirectory" "/DOutputDir=$OutputDirectory" $scriptPath
 if ($LASTEXITCODE -ne 0) { throw "ISCC 编译失败（退出码 $LASTEXITCODE）" }
 
-$setup = Get-ChildItem -Path $OutputDirectory -Filter "HyperMoeland-$Version-setup.exe" -File -ErrorAction SilentlyContinue |
+$setup = Get-ChildItem -Path $OutputDirectory -Filter "Islora-$Version-setup.exe" -File -ErrorAction SilentlyContinue |
     Select-Object -First 1
 if (-not $setup) { throw "编译结束但没有找到安装包，请检查 $OutputDirectory" }
 

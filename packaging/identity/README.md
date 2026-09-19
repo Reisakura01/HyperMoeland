@@ -1,6 +1,6 @@
-# HyperMoeland 包身份（Sparse Package Identity）
+# Islora 包身份（Sparse Package Identity）
 
-为「包外」的 `HyperMoeland.exe` 授予 Windows **包身份（Package Identity）**，
+为「包外」的 `Islora.exe` 授予 Windows **包身份（Package Identity）**，
 解锁需要身份的系统能力：
 
 - ✅ `UserNotificationListener` **事件订阅**（无身份时订阅会抛 `0x80070490 ERROR_NOT_FOUND`，只能退化为轮询）
@@ -9,7 +9,7 @@
 
 原理：注册一个**只含清单**的稀疏包（sparse package），并通过
 `Add-AppxPackage -ExternalLocation <目录>` 把包指向 exe 所在目录。
-注册后，**从该目录启动的 `HyperMoeland.exe` 会自动获得包身份**（无需改代码）。
+注册后，**从该目录启动的 `Islora.exe` 会自动获得包身份**（无需改代码）。
 
 > 参考实现：WinIsland 的 `packaging/identity`（Rust 项目，同机制）。
 
@@ -29,7 +29,7 @@
 ### 1. 构建程序
 
 ```powershell
-dotnet publish HyperMoeland\HyperMoeland.csproj -c Release -r win-x64 --self-contained true `
+dotnet publish Islora\Islora.csproj -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
 ```
 
@@ -40,15 +40,15 @@ dotnet publish HyperMoeland\HyperMoeland.csproj -c Release -r win-x64 --self-con
 .\packaging\identity\Install-Identity.ps1
 
 # 或指定目录 / 版本 / 渠道（dev 与 stable 可共存）
-.\packaging\identity\Install-Identity.ps1 -ExternalLocation "D:\apps\HyperMoeland" -Version 1.3.0.0 -Channel dev
+.\packaging\identity\Install-Identity.ps1 -ExternalLocation "D:\apps\Islora" -Version 1.3.0.0 -Channel dev
 ```
 
-> **用安装包装的版本**：脚本会随安装包复制到 `%LOCALAPPDATA%\Programs\HyperMoeland\identity\`，
+> **用安装包装的版本**：脚本会随安装包复制到 `%LOCALAPPDATA%\Programs\Islora\identity\`，
 > 此时不带参数即可——脚本会自动识别「安装目录布局」（应用目录 = 安装目录，
 > 工作目录 = `identity\build\`）：
 >
 > ```powershell
-> powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\HyperMoeland\identity\Install-Identity.ps1" -Version 1.3.0.0
+> powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\Islora\identity\Install-Identity.ps1" -Version 1.3.0.0
 > ```
 
 脚本会依次：
@@ -65,7 +65,7 @@ dotnet publish HyperMoeland\HyperMoeland.csproj -c Release -r win-x64 --self-con
 |---|---|---|
 | 运行 `Start-WithIdentity.ps1` | ✅ 带身份 | **官方事件订阅**（实时、零轮询） |
 | 从「带身份」快捷方式启动（`New-Shortcut.ps1` 创建） | ✅ 带身份 | 官方事件订阅 |
-| **直接双击 `HyperMoeland.exe`** | ❌ 不带 | 自动退化为**轮询**（1 秒一次） |
+| **直接双击 `Islora.exe`** | ❌ 不带 | 自动退化为**轮询**（1 秒一次） |
 | 开机自启（Run 键，直接拉起 exe） | ❌ 不带 | 自动退化为轮询 |
 
 > 程序会**自动检测**并选择模式，两种模式功能都正常，区别只是实时性与资源占用。

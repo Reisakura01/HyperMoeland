@@ -1,0 +1,19 @@
+<Application x:Class="Islora.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <!-- 主题画刷：默认日间（浅色），由 ThemeManager 按时间动态替换 -->
+        <SolidColorBrush x:Key="Theme.Foreground" Color="#FF1B1B1B" />
+        <SolidColorBrush x:Key="Theme.Muted"     Color="#FF5F5F5F" />
+        <SolidColorBrush x:Key="Theme.Border"    Color="#40000000" />
+        <SolidColorBrush x:Key="Theme.Overlay"   Color="#E6F5F5F7" />
+        <!-- 充电指示色：醒目绿色（日夜间一致）。必须在 App 资源里注册默认值，
+             否则 DynamicResource 在 ThemeManager.Apply 未触发时找不到该 key，
+             Path.Fill 为空导致闪电不渲染（只占位不显示）。 -->
+        <SolidColorBrush x:Key="Theme.Charging"  Color="#FF00C27A" />
+        <!-- 强调色：小组件圆环等点缀元素（默认日间色） -->
+        <SolidColorBrush x:Key="Theme.Accent"    Color="#FF0A6CD6" />
+    </Application.Resources>
+</Application>

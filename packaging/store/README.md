@@ -1,4 +1,4 @@
-# HyperMoeland 完整 MSIX 包（Microsoft Store / 本地测试）
+# Islora 完整 MSIX 包（Microsoft Store / 本地测试）
 
 把 `dotnet publish` 的产物打成**完整 MSIX 包**，用于：
 - 提交 Microsoft Store（Store 免费代为签名，并自动提供 CDN 与更新）
@@ -16,26 +16,31 @@
 
 ## Store 身份
 
-Partner Center「产品管理 → 产品标识」给出的三个值（本项目的实际取值）：
+> ⚠️ **改名后需要先在 Partner Center 处理**：后台当前保留的产品名还是旧名（`HyperMoeland`），
+> 因此 `Package/Identity/Name` 目前仍是 `Reisakura.HyperMoeland`。
+> 要在 Partner Center 里把产品名改为 **Islora**（或新建产品重新保留名称）后，
+> 下表的值才会生效。**提交前务必以后台「产品标识」页为准。**
+
+改名后 Partner Center「产品管理 → 产品标识」应为：
 
 | 清单节点 | 值 |
 |---|---|
-| `Package/Identity/Name` → `<Identity Name>` | `Reisakura.HyperMoeland` |
-| `Package/Identity/Publisher` → `<Identity Publisher>` | `CN=0070A02F-1245-460C-935F-426185146220` |
-| `Package/Properties/PublisherDisplayName` | `Reisakura` |
+| `Package/Identity/Name` → `<Identity Name>` | `Reisakura.Islora`（待后台改名后确认） |
+| `Package/Identity/Publisher` → `<Identity Publisher>` | `CN=0070A02F-1245-460C-935F-426185146220`（不变） |
+| `Package/Properties/PublisherDisplayName` | `Reisakura`（不变） |
 
 由 Name + Publisher 推导的**包系列名**（按 `Name_ + Base32(SHA256(UTF16LE(Publisher)))[0..12]` 计算，
-已用 `CN=MoeOrigin Team → 6c96f9ngvaz36` 与实装包核对过算法）：
+算法已用 `CN=MoeOrigin Team → 6c96f9ngvaz36` 与实装包核对过；Publisher 未变，故后缀不变）：
 
 ```
-Reisakura.HyperMoeland_5250pqc4cqtpj
+Reisakura.Islora_5250pqc4cqtpj
 ```
 
 提交包一条命令（自包含 + 未签名，Store 会代为签名）：
 
 ```powershell
 pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -SelfContained `
-    -PackageName "Reisakura.HyperMoeland" `
+    -PackageName "Reisakura.Islora" `
     -Publisher "CN=0070A02F-1245-460C-935F-426185146220" `
     -PublisherDisplayName "Reisakura"
 ```
@@ -48,7 +53,7 @@ pwsh -File packaging/store/Build-StorePackage.ps1
 
 # 提交 Store 用（未签名 + Partner Center 身份三件套）
 pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign `
-    -PackageName "12345Reisakura01.HyperMoeland" `
+    -PackageName "12345Reisakura01.Islora" `
     -Publisher "CN=1A2B3C4D-0000-0000-0000-000000000000" `
     -PublisherDisplayName "MoeOrigin Team"
 
@@ -69,7 +74,7 @@ pwsh -File packaging/store/Install-StorePackage.ps1 -Uninstall
 ```
 
 > 自签证书要能安装，必须位于「本地计算机 → 受信任人」。首次需管理员执行：
-> `Import-Certificate -FilePath dist\identity\MoeOrigin.HyperMoeland.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`
+> `Import-Certificate -FilePath dist\identity\MoeOrigin.Islora.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople`
 > （或直接跑 `packaging/identity/Install-Identity.ps1`，它会一并处理）
 
 > ⚠️ 要用 **Store 身份**（`CN=0070A02F-…`）的包本地安装，签名证书的 Subject 必须与清单里的
@@ -111,12 +116,12 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
 
 | 项目 | 结果 |
 |---|---|
-| 包注册 | `MoeOrigin.HyperMoeland.StoreTest_1.3.0.1_x64__6c96f9ngvaz36`，安装到 `C:\Program Files\WindowsApps\...` |
+| 包注册 | `MoeOrigin.Islora.StoreTest_1.3.0.1_x64__6c96f9ngvaz36`，安装到 `C:\Program Files\WindowsApps\...` |
 | 开始菜单 | 入口已注册（`Get-StartApps` 可见），AUMID 启动正常 |
 | 完整包识别 | `IsFullPackage=True`、`FamilyName` 正确、exe 路径落在 `InstalledLocation` 内 |
 | 通知能力 | `ok=True mode=event-subscription` —— 受限能力 `userNotificationListener` 生效，通知走官方事件订阅而非轮询 |
 | 开机自启 | `StartupTask State=Enabled`，由应用按设置调用 `RequestEnableAsync()` 打开 |
-| 设置读写 | 仍读写真实路径 `%LOCALAPPDATA%\HyperMoeland\settings.json`，**未被虚拟化**，用户既有设置直接沿用 |
+| 设置读写 | 仍读写真实路径 `%LOCALAPPDATA%\Islora\settings.json`，**未被虚拟化**，用户既有设置直接沿用 |
 | 稳定性 | 进程持续存活，事件日志无崩溃记录 |
 
 由此确认：**不需要**在完整包里声明 `unvirtualizedResources`，设置存储路径无需改动。
@@ -127,7 +132,7 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
    `Package/Identity/Publisher`、`PublisherDisplayName` 用 `-PackageName/-Publisher/-PublisherDisplayName`
    传进来重新打包，否则会被驳回。
 2. **受限能力说明**：`userNotificationListener` 属受限能力，提交时需要在审核备注里说明用途
-   （HyperMoeland 用它把系统通知显示在岛的胶囊上，不落盘、不外传）。
+   （Islora 用它把系统通知显示在岛的胶囊上，不落盘、不外传）。
 3. **截图**：至少 1 张，≥1366×768。仓库现有 `docs/preview.png`（920×500）与 `docs/pill.png`（464×92）**都不达标**，需要重拍整屏截图。
 4. **隐私政策 URL**：必填（读通知/媒体信息属个人信息范畴）。
 5. **年龄分级问卷**（IARC）、分类、系统要求、支持联系方式。
@@ -136,6 +141,6 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
 
 ## 已知限制
 
-- 包名默认是 `MoeOrigin.HyperMoeland.StoreTest`，与 `identity` 注册的稀疏包**可以共存**，但两者同时运行会出现两个岛；
+- 包名默认是 `MoeOrigin.Islora.StoreTest`，与 `identity` 注册的稀疏包**可以共存**，但两者同时运行会出现两个岛；
   日常使用建议只保留一种形态。
-- MSIX 卸载不会清理 `%LOCALAPPDATA%\HyperMoeland`（用户设置会保留，这是刻意的）。
+- MSIX 卸载不会清理 `%LOCALAPPDATA%\Islora`（用户设置会保留，这是刻意的）。

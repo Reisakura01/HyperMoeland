@@ -1,7 +1,7 @@
-# HyperMoeland 安装包（Inno Setup）
+# Islora 安装包（Inno Setup）
 
 用 [Inno Setup 6](https://jrsoftware.org/isdl.php) 把 `dotnet publish` 的产物打成
-一个标准的 Windows 安装程序（`HyperMoeland-<版本>-setup.exe`）。
+一个标准的 Windows 安装程序（`Islora-<版本>-setup.exe`）。
 
 ## 一键构建
 
@@ -18,7 +18,7 @@ pwsh -File packaging/installer/Build-Installer.ps1 -OpenOutput      # 完成后�
 脚本会依次：
 
 1. `dotnet publish -c Release -o artifacts\app`（框架依赖发布，顺带剔除 `.pdb` 与包身份开发产物）
-2. 从 `HyperMoeland/HyperMoeland.csproj` 的 `<Version>` 读取版本号
+2. 从 `Islora/Islora.csproj` 的 `<Version>` 读取版本号
 3. 调用 `ISCC.exe` 生成安装包到 `artifacts\`
 
 > 未安装 Inno Setup 时脚本会给出提示。安装：`winget install --id JRSoftware.InnoSetup`，
@@ -32,19 +32,19 @@ pwsh -File packaging/installer/Build-Installer.ps1 -OpenOutput      # 完成后�
     /DNumericVersion=1.3.0.0 `
     /DStagingDir=artifacts\app `
     /DOutputDir=artifacts `
-    packaging\installer\HyperMoeland.iss
+    packaging\installer\Islora.iss
 ```
 
 ## 安装包行为
 
 | 项目 | 说明 |
 |---|---|
-| 安装位置 | `%LOCALAPPDATA%\Programs\HyperMoeland`（**每位用户安装，不需要管理员权限，不弹 UAC**） |
+| 安装位置 | `%LOCALAPPDATA%\Programs\Islora`（**每位用户安装，不需要管理员权限，不弹 UAC**） |
 | 安装大小 | 约 26 MB（其中 `Microsoft.Windows.SDK.NET.dll` 占绝大部分），安装包约 5.8 MB |
 | 快捷方式 | 开始菜单（默认）+ 桌面（可选任务，默认不勾选） |
 | 运行时检查 | 安装前检查 .NET 10 桌面运行时；缺失时给出下载地址，由用户决定是否继续 |
 | 系统要求 | Windows 11（build 22000+），x64 |
-| 覆盖安装 | `AppId` 固定，可直接覆盖升级；升级时自动保留 `%LOCALAPPDATA%\HyperMoeland\settings.json` |
+| 覆盖安装 | `AppId` 固定，可直接覆盖升级；升级时自动保留 `%LOCALAPPDATA%\Islora\settings.json` |
 | 卸载 | 控制面板 / 设置 → 应用；卸载会结束正在运行的岛并清理开始菜单与安装目录 |
 | 随包附带 | `identity\`（稀疏包身份脚本，装完可按需开启）、`README.md`、`LICENSE` |
 
@@ -55,7 +55,7 @@ pwsh -File packaging/installer/Build-Installer.ps1 -OpenOutput      # 完成后�
 
 ```powershell
 # 需要管理员权限，脚本会自动请求提权
-powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\HyperMoeland\identity\Install-Identity.ps1" -Version 1.3.0.0 -Channel stable
+powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\Islora\identity\Install-Identity.ps1" -Version 1.3.0.0 -Channel stable
 ```
 
 脚本会自动识别「安装目录布局」：外部位置 = 安装目录，工作目录 = `identity\build\`。
@@ -74,6 +74,6 @@ powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\HyperMoelan
 
 | 文件 | 作用 |
 |---|---|
-| `HyperMoeland.iss` | 安装脚本：安装位置、快捷方式、语言、运行时检查、卸载逻辑 |
+| `Islora.iss` | 安装脚本：安装位置、快捷方式、语言、运行时检查、卸载逻辑 |
 | `ChineseSimplified.isl` | 简体中文安装界面词条 |
 | `Build-Installer.ps1` | 一键构建脚本（发布 + 定位 ISCC + 编译） |

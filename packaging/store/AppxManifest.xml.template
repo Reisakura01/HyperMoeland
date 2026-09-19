@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HyperMoeland 完整包（Full MSIX）清单模板 —— 用于 Microsoft Store 提交与本地测试安装。
+  Islora 完整包（Full MSIX）清单模板 —— 用于 Microsoft Store 提交与本地测试安装。
 
   与 packaging/identity/AppxManifest.xml.template（稀疏包）的区别：
     * 应用文件真实打进包里（不再用 uap10:AllowExternalContent）
@@ -55,7 +55,7 @@
   </Capabilities>
 
   <Applications>
-    <Application Id="HyperMoeland"
+    <Application Id="Islora"
                  Executable="{{EXECUTABLE}}"
                  EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements DisplayName="{{DISPLAY_NAME}}"
@@ -73,7 +73,7 @@
         <uap5:Extension Category="windows.startupTask"
                         Executable="{{EXECUTABLE}}"
                         EntryPoint="Windows.FullTrustApplication">
-          <uap5:StartupTask TaskId="HyperMoelandStartup"
+          <uap5:StartupTask TaskId="IsloraStartup"
                             Enabled="false"
                             DisplayName="{{DISPLAY_NAME}}" />
         </uap5:Extension>

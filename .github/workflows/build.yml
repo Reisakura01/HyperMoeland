@@ -20,18 +20,18 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore HyperMoeland.sln
+        run: dotnet restore Islora.sln
 
       - name: Build (Release)
-        run: dotnet build HyperMoeland.sln -c Release --no-restore
+        run: dotnet build Islora.sln -c Release --no-restore
 
       # 产出便携「自包含单文件 exe」作为构建工件
       - name: Publish (single-file, self-contained)
-        run: dotnet publish HyperMoeland/HyperMoeland.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+        run: dotnet publish Islora/Islora.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HyperMoeland-win-x64-singlefile
-          path: publish/HyperMoeland.exe
+          name: Islora-win-x64-singlefile
+          path: publish/Islora.exe
           retention-days: 14

@@ -16,7 +16,7 @@
   对外 URL 为：
 
   ```
-  https://reisakura01.github.io/HyperMoeland/privacy.html
+  https://reisakura01.github.io/Islora/privacy.html
   ```
 
   填到 Partner Center 的「隐私政策 URL」即可。

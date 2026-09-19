@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-  把 HyperMoeland 打成「完整 MSIX 包」——用于 Microsoft Store 提交，或本地安装测试。
+  把 Islora 打成「完整 MSIX 包」——用于 Microsoft Store 提交，或本地安装测试。
 
 .DESCRIPTION
   流程：
     1. dotnet publish 发布应用（默认框架依赖；-SelfContained 可发布自包含版）
-    2. 从 HyperMoeland.csproj 读版本号，换算成清单要求的四段式
+    2. 从 Islora.csproj 读版本号，换算成清单要求的四段式
     3. 用 App.ico 生成清单所需的全套图标（44/50/71/150/310/310x150）
     4. 由 AppxManifest.xml.template 生成 AppxManifest.xml
     5. MakeAppx 打包；默认用自签证书签名（仅本地测试用）
@@ -21,7 +21,7 @@
 
 .EXAMPLE
   pwsh -File packaging/store/Build-StorePackage.ps1
-  pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -PackageName "12345Reisakura01.HyperMoeland" -Publisher "CN=1A2B3C4D-..."
+  pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -PackageName "12345Reisakura01.Islora" -Publisher "CN=1A2B3C4D-..."
 #>
 [CmdletBinding()]
 param(
@@ -29,13 +29,13 @@ param(
     [string]$Configuration = 'Release',
     [string]$StagingDirectory,
     [string]$OutputDirectory,
-    [string]$PackageName = 'MoeOrigin.HyperMoeland.StoreTest',
+    [string]$PackageName = 'MoeOrigin.Islora.StoreTest',
     [string]$Publisher = 'CN=MoeOrigin Team',
     [string]$PublisherDisplayName = 'MoeOrigin Team',
-    [string]$DisplayName = 'HyperMoeland',
-    [string]$Description = 'HyperMoeland —— Windows 11 顶部灵动岛：时钟 / 媒体 / 通知 / 电量 / 系统小组件',
+    [string]$DisplayName = 'Islora',
+    [string]$Description = 'Islora —— Windows 11 顶部胶囊式状态岛：时钟 / 媒体 / 通知 / 电量 / 系统小组件',
     [string]$CertificatePath,
-    [string]$CertificatePassword = 'HyperMoelandDevelopment',
+    [string]$CertificatePassword = 'IsloraDevelopment',
     [switch]$SelfContained,
     [switch]$SkipPublish,
     [switch]$NoSign
@@ -51,8 +51,8 @@ function Write-Step([string]$Text) {
 # ---- 路径与工具 ----
 $storeDirectory = $PSScriptRoot
 $repositoryRoot = Split-Path (Split-Path $storeDirectory -Parent) -Parent
-$projectPath = Join-Path $repositoryRoot 'HyperMoeland\HyperMoeland.csproj'
-$iconPath = Join-Path $repositoryRoot 'HyperMoeland\App.ico'
+$projectPath = Join-Path $repositoryRoot 'Islora\Islora.csproj'
+$iconPath = Join-Path $repositoryRoot 'Islora\App.ico'
 $templatePath = Join-Path $storeDirectory 'AppxManifest.xml.template'
 
 if ([string]::IsNullOrWhiteSpace($StagingDirectory)) { $StagingDirectory = Join-Path $repositoryRoot 'artifacts\app' }
@@ -80,7 +80,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 $packageVersion = ([regex]::Matches($Version, '\d+') | ForEach-Object { $_.Value }) -join '.'
 while (($packageVersion -split '\.').Count -lt 4) { $packageVersion += '.0' }
 
-Write-Step 'HyperMoeland 完整 MSIX 打包'
+Write-Step 'Islora 完整 MSIX 打包'
 Write-Host "应用版本  : $Version"
 Write-Host "清单版本  : $packageVersion"
 Write-Host "包名      : $PackageName"
@@ -104,8 +104,8 @@ if (-not $SkipPublish) {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish 失败（退出码 $LASTEXITCODE）" }
 }
 
-$appExe = Join-Path $StagingDirectory 'HyperMoeland.exe'
-if (-not (Test-Path $appExe)) { throw "暂存目录里没有 HyperMoeland.exe：$StagingDirectory" }
+$appExe = Join-Path $StagingDirectory 'Islora.exe'
+if (-not (Test-Path $appExe)) { throw "暂存目录里没有 Islora.exe：$StagingDirectory" }
 
 # ---- 2. 组装包目录 ----
 Write-Step '组装包内容'
@@ -170,7 +170,7 @@ $manifest = $manifest.Replace('{{PACKAGE_NAME}}', $PackageName).
     Replace('{{PACKAGE_VERSION}}', $packageVersion).
     Replace('{{DISPLAY_NAME}}', $DisplayName).
     Replace('{{DESCRIPTION}}', $Description).
-    Replace('{{EXECUTABLE}}', 'HyperMoeland.exe')
+    Replace('{{EXECUTABLE}}', 'Islora.exe')
 [System.IO.File]::WriteAllText((Join-Path $packageRoot 'AppxManifest.xml'), $manifest, (New-Object System.Text.UTF8Encoding($true)))
 Write-Host "  已写入 AppxManifest.xml"
 
@@ -186,7 +186,7 @@ if ($LASTEXITCODE -ne 0) { throw "MakeAppx 打包失败（退出码 $LASTEXITCOD
 if (-not $NoSign) {
     Write-Step '签名（本机自签证书，仅用于本地安装测试）'
     if ([string]::IsNullOrWhiteSpace($CertificatePath)) {
-        $CertificatePath = Join-Path $repositoryRoot 'dist\identity\cert\HyperMoeland.Dev.pfx'
+        $CertificatePath = Join-Path $repositoryRoot 'dist\identity\cert\Islora.Dev.pfx'
     }
     if (-not (Test-Path $CertificatePath)) {
         throw "找不到证书：$CertificatePath`n请先用 packaging/identity/New-Certificate.ps1 生成，或传 -CertificatePath。"

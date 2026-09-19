@@ -36,17 +36,17 @@ function Get-SdkTool([string]$Name) {
 $publisher = 'CN=MoeOrigin Team'
 
 $identity = switch ($Channel) {
-    'stable' { @{ Name = 'MoeOrigin.HyperMoeland';     DisplayName = 'HyperMoeland' } }
-    'dev'    { @{ Name = 'MoeOrigin.HyperMoeland.Dev'; DisplayName = 'HyperMoeland Development' } }
+    'stable' { @{ Name = 'MoeOrigin.Islora';     DisplayName = 'Islora' } }
+    'dev'    { @{ Name = 'MoeOrigin.Islora.Dev'; DisplayName = 'Islora Development' } }
 }
 
 # 兼容两种布局：仓库内（<repo>\packaging\identity）与安装目录内（<app>\identity）
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $iconPath = @(
-    (Join-Path $repositoryRoot 'HyperMoeland\App.ico'),   # 仓库布局
+    (Join-Path $repositoryRoot 'Islora\App.ico'),   # 仓库布局
     (Join-Path $PSScriptRoot 'App.ico')                   # 安装目录布局（随安装包附带）
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $iconPath) { throw '找不到应用图标 App.ico（仓库：HyperMoeland\App.ico；安装目录：identity\App.ico）' }
+if (-not $iconPath) { throw '找不到应用图标 App.ico（仓库：Islora\App.ico；安装目录：identity\App.ico）' }
 
 $stagingDirectory = Join-Path $OutputDirectory 'identity-staging'
 $assetsDirectory = Join-Path $stagingDirectory 'assets'

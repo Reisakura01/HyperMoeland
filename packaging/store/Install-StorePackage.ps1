@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  本地安装 / 卸载 HyperMoeland 完整 MSIX 包（测试用）。
+  本地安装 / 卸载 Islora 完整 MSIX 包（测试用）。
 
 .DESCRIPTION
   自签证书签名的包要能安装，证书必须位于「本地计算机 → 受信任人」存储，
@@ -21,7 +21,7 @@
 
 .PARAMETER PackageName
   卸载目标包名，默认只卸载本脚本构建的测试包。
-  注意：不要用通配符匹配 MoeOrigin.HyperMoeland*，
+  注意：不要用通配符匹配 MoeOrigin.Islora*，
   那会把 packaging/identity 注册的稀疏包一起删掉。
 #>
 [CmdletBinding()]
@@ -29,7 +29,7 @@ param(
     [string]$MsixPath,
     [string]$CertificatePath,
     [switch]$Uninstall,
-    [string]$PackageName = 'MoeOrigin.HyperMoeland.StoreTest',
+    [string]$PackageName = 'MoeOrigin.Islora.StoreTest',
     [string]$PackageFamilyName
 )
 
@@ -84,7 +84,7 @@ Write-Host "签名状态: $($signature.Status)  指纹: $thumbprint"
 
 if (-not (Test-CertTrusted $thumbprint)) {
     if ([string]::IsNullOrWhiteSpace($CertificatePath)) {
-        $CertificatePath = Join-Path $repositoryRoot 'dist\identity\MoeOrigin.HyperMoeland.cer'
+        $CertificatePath = Join-Path $repositoryRoot 'dist\identity\MoeOrigin.Islora.cer'
     }
     if (-not (Test-Path $CertificatePath)) {
         throw "证书未受信任且找不到 .cer（$CertificatePath）。请先运行 packaging/identity/New-Certificate.ps1，或用 -CertificatePath 指定。"
@@ -97,7 +97,7 @@ if (-not (Test-CertTrusted $thumbprint)) {
 }
 
 # 覆盖安装：先移除同名旧包
-$existing = Get-AppxPackage -Name 'MoeOrigin.HyperMoeland.StoreTest' -ErrorAction SilentlyContinue
+$existing = Get-AppxPackage -Name 'MoeOrigin.Islora.StoreTest' -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Host "移除旧的测试包 $($existing.PackageFullName) ..." -ForegroundColor Yellow
     $existing | Remove-AppxPackage
@@ -106,7 +106,7 @@ if ($existing) {
 Write-Host "注册包..." -ForegroundColor Cyan
 Add-AppxPackage -Path $MsixPath
 
-$installed = Get-AppxPackage -Name 'MoeOrigin.HyperMoeland.StoreTest' |
+$installed = Get-AppxPackage -Name 'MoeOrigin.Islora.StoreTest' |
     Sort-Object Version -Descending | Select-Object -First 1
 if (-not $installed) { throw "安装后未能查询到包" }
 
@@ -115,4 +115,4 @@ Write-Host "安装成功！" -ForegroundColor Green
 Write-Host "  包全名    : $($installed.PackageFullName)"
 Write-Host "  包家族名  : $($installed.PackageFamilyName)"
 Write-Host "  安装位置  : $($installed.InstallLocation)"
-Write-Host "  启动命令  : explorer.exe shell:AppsFolder\$($installed.PackageFamilyName)!HyperMoeland"
+Write-Host "  启动命令  : explorer.exe shell:AppsFolder\$($installed.PackageFamilyName)!Islora"
