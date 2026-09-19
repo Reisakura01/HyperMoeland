@@ -19,6 +19,23 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # 脚本里含中文，必须存成 UTF-8 带 BOM：Windows PowerShell 5.1 会把无 BOM 的 .ps1
+      # 按 ANSI 解析，中文变乱码并连带把引号解析错，脚本直接语法报错。这个坑踩过多次，用 CI 兜住。
+      - name: Verify UTF-8 BOM (ps1/isl)
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem -Recurse -File -Include *.ps1, *.isl |
+            Where-Object { $_.FullName -notmatch '\\(bin|obj|artifacts|dist|\.git)\\' } |
+            Where-Object {
+              $b = [IO.File]::ReadAllBytes($_.FullName)
+              -not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)
+            }
+          if ($bad) {
+            $bad | ForEach-Object { Write-Host "::error file=$($_.FullName)::缺少 UTF-8 BOM（PowerShell 5.1 会按 ANSI 解析导致乱码）" }
+            exit 1
+          }
+          Write-Host "所有 .ps1 / .isl 均带 UTF-8 BOM"
+
       - name: Restore
         run: dotnet restore Islora.sln
 

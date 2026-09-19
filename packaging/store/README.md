@@ -16,21 +16,16 @@
 
 ## Store 身份
 
-> ⚠️ **改名后需要先在 Partner Center 处理**：后台当前保留的产品名还是旧名（`HyperMoeland`），
-> 因此 `Package/Identity/Name` 目前仍是 `Reisakura.HyperMoeland`。
-> 要在 Partner Center 里把产品名改为 **Islora**（或新建产品重新保留名称）后，
-> 下表的值才会生效。**提交前务必以后台「产品标识」页为准。**
-
-改名后 Partner Center「产品管理 → 产品标识」应为：
+Partner Center「产品管理 → 产品标识」给出的三个值（已在后台把产品名改为 Islora 后的实际取值）：
 
 | 清单节点 | 值 |
 |---|---|
-| `Package/Identity/Name` → `<Identity Name>` | `Reisakura.Islora`（待后台改名后确认） |
-| `Package/Identity/Publisher` → `<Identity Publisher>` | `CN=0070A02F-1245-460C-935F-426185146220`（不变） |
-| `Package/Properties/PublisherDisplayName` | `Reisakura`（不变） |
+| `Package/Identity/Name` → `<Identity Name>` | `Reisakura.Islora` |
+| `Package/Identity/Publisher` → `<Identity Publisher>` | `CN=0070A02F-1245-460C-935F-426185146220` |
+| `Package/Properties/PublisherDisplayName` | `Reisakura` |
 
 由 Name + Publisher 推导的**包系列名**（按 `Name_ + Base32(SHA256(UTF16LE(Publisher)))[0..12]` 计算，
-算法已用 `CN=MoeOrigin Team → 6c96f9ngvaz36` 与实装包核对过；Publisher 未变，故后缀不变）：
+算法已用 `CN=MoeOrigin Team → 6c96f9ngvaz36` 与实装包核对过，实测装包结果同样吻合）：
 
 ```
 Reisakura.Islora_5250pqc4cqtpj
@@ -44,6 +39,9 @@ pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -SelfContained `
     -Publisher "CN=0070A02F-1245-460C-935F-426185146220" `
     -PublisherDisplayName "Reisakura"
 ```
+
+产物：`artifacts/store/Reisakura.Islora-<清单版本>.msix`（当前 `1.3.0.2`，约 78 MB）。
+上传到 Partner Center 的「程序包」页即可，**不要**用自签证书签名后再上传（Store 会自己签）。
 
 ## 构建
 
@@ -110,7 +108,9 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
 | `TargetDeviceFamily MinVersion="10.0.22000.0"` | 云母（Mica）等效果要求 Windows 11 |
 | `ProcessorArchitecture="x64"` | 与发布 RID 一致（稀疏包用的是 `neutral`） |
 
-## 本地验证结论（1.3.0-beta.1）
+## 本地验证结论
+
+### 完整包形态（测试身份，1.3.0-beta.1）
 
 在 Windows 11（build 26100）上装包后从**开始菜单入口**启动，实测：
 
@@ -126,11 +126,21 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
 
 由此确认：**不需要**在完整包里声明 `unvirtualizedResources`，设置存储路径无需改动。
 
+### 正式 Store 包（真实身份，1.3.0-beta.2 → 清单 1.3.0.2）
+
+用与清单 Publisher 同名的自签证书签名后本地安装（证书已在受信任人，无需管理员），实测：
+
+| 项目 | 结果 |
+|---|---|
+| 包全名 | `Reisakura.Islora_1.3.0.2_x64__5250pqc4cqtpj` |
+| 包系列名 | `Reisakura.Islora_5250pqc4cqtpj`（与上面推导的预测值完全一致） |
+| 开始菜单 | `Reisakura.Islora_5250pqc4cqtpj!Islora` |
+| 启动 | 从 AUMID 启动正常，进程运行于 `C:\Program Files\WindowsApps\Reisakura.Islora_1.3.0.2_x64__5250pqc4cqtpj\Islora.exe`，无崩溃记录 |
+| 卸载 | 验证后已卸载，避免与将来真正的 Store 版（同包系列名）冲突 |
+
 ## 提交 Store 前还需要做的事
 
-1. **Partner Center 身份三件套**：建好应用后，把「产品标识」页的 `Package/Identity/Name`、
-   `Package/Identity/Publisher`、`PublisherDisplayName` 用 `-PackageName/-Publisher/-PublisherDisplayName`
-   传进来重新打包，否则会被驳回。
+1. ~~Partner Center 身份三件套~~ —— 后台产品名已改为 Islora，打包脚本已按真实身份出包。
 2. **受限能力说明**：`userNotificationListener` 属受限能力，提交时需要在审核备注里说明用途
    （Islora 用它把系统通知显示在岛的胶囊上，不落盘、不外传）。
 3. **截图**：至少 1 张，≥1366×768。仓库现有 `docs/preview.png`（920×500）与 `docs/pill.png`（464×92）**都不达标**，需要重拍整屏截图。

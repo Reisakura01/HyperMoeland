@@ -20,16 +20,17 @@
   按包家族名卸载（优先级高于 -PackageName）。
 
 .PARAMETER PackageName
-  卸载目标包名，默认只卸载本脚本构建的测试包。
-  注意：不要用通配符匹配 MoeOrigin.Islora*，
-  那会把 packaging/identity 注册的稀疏包一起删掉。
+  目标包名：安装时用于覆盖旧版本、卸载时用于定位目标。
+  默认 `Reisakura.Islora`（与 Partner Center 的产品标识一致）；
+  本地用测试身份打包时改成对应的名字（例如 `MoeOrigin.Islora.StoreTest`）。
+  注意：不要用通配符，那会误删 packaging/identity 注册的稀疏包。
 #>
 [CmdletBinding()]
 param(
     [string]$MsixPath,
     [string]$CertificatePath,
     [switch]$Uninstall,
-    [string]$PackageName = 'MoeOrigin.Islora.StoreTest',
+    [string]$PackageName = 'Reisakura.Islora',
     [string]$PackageFamilyName
 )
 
@@ -96,19 +97,19 @@ if (-not (Test-CertTrusted $thumbprint)) {
     Import-Certificate -FilePath $CertificatePath -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' | Out-Null
 }
 
-# 覆盖安装：先移除同名旧包
-$existing = Get-AppxPackage -Name 'MoeOrigin.Islora.StoreTest' -ErrorAction SilentlyContinue
+# 覆盖安装：先移除同包名的旧版本（同一包系列名不能并存）
+$existing = Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue
 if ($existing) {
-    Write-Host "移除旧的测试包 $($existing.PackageFullName) ..." -ForegroundColor Yellow
+    Write-Host "移除已安装的旧包 $($existing.PackageFullName) ..." -ForegroundColor Yellow
     $existing | Remove-AppxPackage
 }
 
 Write-Host "注册包..." -ForegroundColor Cyan
 Add-AppxPackage -Path $MsixPath
 
-$installed = Get-AppxPackage -Name 'MoeOrigin.Islora.StoreTest' |
+$installed = Get-AppxPackage -Name $PackageName |
     Sort-Object Version -Descending | Select-Object -First 1
-if (-not $installed) { throw "安装后未能查询到包" }
+if (-not $installed) { throw "安装后未能查询到包（Name=$PackageName）" }
 
 Write-Host ""
 Write-Host "安装成功！" -ForegroundColor Green
