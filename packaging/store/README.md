@@ -40,7 +40,7 @@ pwsh -File packaging/store/Build-StorePackage.ps1 -NoSign -SelfContained `
     -PublisherDisplayName "Reisakura"
 ```
 
-产物：`artifacts/store/Reisakura.Islora-<清单版本>.msix`（当前 `1.3.0.2`，约 78 MB）。
+产物：`artifacts/store/Reisakura.Islora-<清单版本>.msix`（当前 `1.3.0.0`，约 78 MB）。
 上传到 Partner Center 的「程序包」页即可，**不要**用自签证书签名后再上传（Store 会自己签）。
 
 ## 构建
@@ -81,19 +81,32 @@ pwsh -File packaging/store/Install-StorePackage.ps1 -Uninstall
 
 ## 版本号与 Store 提交
 
-清单版本号由应用版本里的数字段拼成四段式：
+**清单版本 = 应用版本的 major.minor.build + 固定的第 4 段 `0`。**
 
-| 应用版本 | 清单版本 |
-|---|---|
-| `1.3.0-beta.1` | `1.3.0.1` |
-| `1.3.0` | `1.3.0.0` |
-| `1.3.1` | `1.3.1.0` |
+| 应用版本 | 清单版本 | 说明 |
+|---|---|---|
+| `1.3.0-beta.2` | `1.3.0.0` | 预发布序号**不进**版本号 |
+| `1.3.0` | `1.3.0.0` | 与上面同一个包版本 |
+| `1.3.1` | `1.3.1.0` | 再次提交时必须提升第 3 段 |
 
-Store 要求**每次提交的包版本必须大于上一次**。注意上表第二行：稳定版 `1.3.0` 映射出的
-`1.3.0.0` **低于** `1.3.0-beta.1` 的 `1.3.0.1`。因此：
+### 第 4 段必须为 0（硬性要求）
 
-- 不要「先提交某版本的 beta，再提交同版本的稳定版」——后者会被 Store 以版本过低拒绝；
-- 正确做法是**改应用版本号**：已经提交过 `1.3.0-beta.1`，下一次提交就用 `1.3.1`（→ `1.3.1.0`）。
+[官方文档](https://learn.microsoft.com/en-us/windows/apps/publishing/publish-your-app/package-version-numbering)原文：
+
+> For Windows 10 or Windows 11 packages, **the last (fourth) section of the version number is
+> reserved for Store use and must be left as 0** when you build your package.
+
+填非 0 会在提交时被拒，报错原文是
+`Apps are not allowed to have a Version with a revision number other than zero specified in the app manifest`。
+所以**预发布序号（`-beta.2` 里的 `2`）绝不能写进版本号**——早期版本的本脚本曾把它算进第 4 段
+（产出 `1.3.0.2`），那种包提交必被拒。现在脚本会强制把第 4 段归零。
+
+### 其余约束
+
+- 各段取值 0..65535，且**第 1 段不能为 0**（脚本已做校验并会报错）；
+- Store 要求**每次提交的包版本严格大于上一次**。由于同一 `X.Y.Z` 的 beta 与稳定版都会映射到
+  同一个包版本，**同一 `X.Y.Z` 只能提交一次**；
+- 因此再次提交的正确做法是提升第 3 段：提交过 `1.3.0.0` 之后，下一次用应用版本 `1.3.1`（→ `1.3.1.0`）。
 
 ## 清单声明了什么
 
@@ -126,16 +139,16 @@ Store 要求**每次提交的包版本必须大于上一次**。注意上表第�
 
 由此确认：**不需要**在完整包里声明 `unvirtualizedResources`，设置存储路径无需改动。
 
-### 正式 Store 包（真实身份，1.3.0-beta.2 → 清单 1.3.0.2）
+### 正式 Store 包（真实身份，1.3.0-beta.2 → 清单 1.3.0.0）
 
 用与清单 Publisher 同名的自签证书签名后本地安装（证书已在受信任人，无需管理员），实测：
 
 | 项目 | 结果 |
 |---|---|
-| 包全名 | `Reisakura.Islora_1.3.0.2_x64__5250pqc4cqtpj` |
+| 包全名 | `Reisakura.Islora_1.3.0.0_x64__5250pqc4cqtpj` |
 | 包系列名 | `Reisakura.Islora_5250pqc4cqtpj`（与上面推导的预测值完全一致） |
 | 开始菜单 | `Reisakura.Islora_5250pqc4cqtpj!Islora` |
-| 启动 | 从 AUMID 启动正常，进程运行于 `C:\Program Files\WindowsApps\Reisakura.Islora_1.3.0.2_x64__5250pqc4cqtpj\Islora.exe`，无崩溃记录 |
+| 启动 | 从 AUMID 启动正常，进程运行于 `C:\Program Files\WindowsApps\Reisakura.Islora_1.3.0.0_x64__5250pqc4cqtpj\Islora.exe`，无崩溃记录 |
 | 卸载 | 验证后已卸载，避免与将来真正的 Store 版（同包系列名）冲突 |
 
 ## 提交 Store 前还需要做的事

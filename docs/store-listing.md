@@ -4,7 +4,7 @@
 复制粘贴即可，不用再想措辞。
 
 - 产品名（已保留）：**Islora**
-- 提交包：`artifacts/store/Reisakura.Islora-1.3.0.2.msix`
+- 提交包：`artifacts/store/Reisakura.Islora-1.3.0.0.msix`
 - 隐私政策：`docs/privacy.md`（启用 GitHub Pages 后为 `https://reisakura01.github.io/Islora/privacy.html`）
 
 > ⚠️ 全程避免出现 `Dynamic Island` / `灵动岛` / `超级岛` / `iOS` / `Apple` / `小米` 等商标词。

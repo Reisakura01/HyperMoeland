@@ -79,9 +79,29 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     if (-not $match.Success) { throw "无法从 $projectPath 读取 <Version>" }
     $Version = $match.Groups[1].Value
 }
-# 清单版本号必须是纯数字四段式：1.3.0-beta.1 → 1.3.0.1
-$packageVersion = ([regex]::Matches($Version, '\d+') | ForEach-Object { $_.Value }) -join '.'
-while (($packageVersion -split '\.').Count -lt 4) { $packageVersion += '.0' }
+# 清单版本号 = 应用版本的 major.minor.build + 固定的第 4 段 0。
+#
+# ⚠️ 第 4 段是 Store 保留字段：官方文档（Package version numbering）要求
+#    "the last (fourth) section of the version number is reserved for Store use
+#     and must be left as 0 when you build your package"。
+#    填非 0 会在提交时被拒，报错原文：
+#    "Apps are not allowed to have a Version with a revision number other than zero"。
+#    所以预发布序号（1.3.0-beta.2 里的 2）绝对不能进版本号。
+#
+# 推论：同一 X.Y.Z 只能提交一次。再次提交必须提升第 3 段（例如 1.3.1 → 1.3.1.0）。
+$releasePart = ($Version -split '-')[0]          # 去掉 -beta.N 之类的预发布后缀
+$parts = @([regex]::Matches($releasePart, '\d+') | ForEach-Object { $_.Value })
+if ($parts.Count -gt 3) {
+    Write-Warning "应用版本 $Version 有 4 段以上数字；Store 的第 4 段必须为 0，已丢弃第 4 段及其后（$($parts[3..($parts.Count-1)] -join '.')）。"
+}
+while ($parts.Count -lt 3) { $parts += '0' }
+$packageVersion = ($parts[0..2] -join '.') + '.0'
+
+# 官方还要求各段在 0..65535 之间，且第一段不为 0
+foreach ($seg in $parts[0..2]) {
+    if ([int]$seg -gt 65535) { throw "版本段 $seg 超过 65535，Store 不接受：$Version" }
+}
+if ([int]$parts[0] -eq 0) { throw "版本第一段不能为 0：$Version" }
 
 Write-Step 'Islora 完整 MSIX 打包'
 Write-Host "应用版本  : $Version"
