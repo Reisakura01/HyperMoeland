@@ -169,6 +169,8 @@ private readonly ThemeScheduler _themeScheduler = new()
 
 本项目采用 **MIT License**，详见 [LICENSE](LICENSE)。
 
+隐私政策见 [docs/privacy.md](docs/privacy.md)。
+
 ---
 
 *Built with .NET 10 + WPF · 纯 Windows 11 桌面实现 · 无第三方运行时依赖*
